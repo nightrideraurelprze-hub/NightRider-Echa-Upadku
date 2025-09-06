@@ -4,6 +4,7 @@ export const en = {
   prevButton: '< PREV',
   nextButton: 'NEXT >',
   panelLabel: 'PANEL',
+  chapterLabel: 'CHAPTER',
   loadingMessages: [
     'Storyboarding the apocalypse...',
     'Inking narrative panels...',
@@ -15,4 +16,10 @@ export const en = {
   criticalError: 'Critical error loading story. Please refresh.',
   languageName: 'English',
   translatingStory: 'Translating story...',
+  generatingChapter: 'Generating chapter {{current}} of {{total}}...',
+  generatingImagesForChapter: 'Generating image {{current}} of {{total}} for chapter {{chapter}}...',
+  enableNarration: 'Enable audio narration',
+  disableNarration: 'Disable audio narration',
+  enableMusic: 'Enable background music',
+  disableMusic: 'Disable background music',
 };

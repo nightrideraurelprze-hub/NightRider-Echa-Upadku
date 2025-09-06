@@ -3,53 +3,100 @@ import { Header } from './components/Header';
 import { LoadingScreen } from './components/LoadingScreen';
 import { ComicPanel } from './components/ComicPanel';
 import { Navigation } from './components/Navigation';
+import { AudioPlayer } from './components/AudioPlayer';
 import { generateStoryPanels, generatePostApocalypticImage, generateAtmosphericText, translatePanels } from './services/geminiService';
 import { STORY_TEXT } from './constants';
 import type { PanelData, PanelsCache } from './types';
 import { useLanguage } from './hooks/useLanguage';
+import { getTrackForSoundscape } from './lib/audioTracks';
 
 const App: React.FC = () => {
   const [sourcePanels, setSourcePanels] = useState<PanelData[]>([]);
   const [displayedPanels, setDisplayedPanels] = useState<PanelData[]>([]);
   const [panelsCache, setPanelsCache] = useState<PanelsCache>({ pl: [] });
-  const [currentPanelIndex, setCurrentPanelIndex] = useState(0);
+  const [currentPanelIndex, setCurrentPanelIndex] = useState<number>(() => {
+    try {
+      const savedIndex = localStorage.getItem('nightrider-panel-index');
+      const parsedIndex = savedIndex ? parseInt(savedIndex, 10) : 0;
+      return isNaN(parsedIndex) ? 0 : parsedIndex;
+    } catch (error) {
+      console.error("Failed to read panel index from localStorage", error);
+      return 0;
+    }
+  });
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isTranslating, setIsTranslating] = useState<boolean>(false);
   const [loadingMessage, setLoadingMessage] = useState<string>('');
-  const { t, loadingMessages, language, languageName } = useLanguage();
+  const { t, language, languageName } = useLanguage();
+  
+  const [isTtsEnabled, setIsTtsEnabled] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('nightrider-tts-enabled') === 'true';
+    } catch (error) {
+      console.error("Failed to read TTS preference from localStorage", error);
+      return false;
+    }
+  });
+
+  const [isMusicEnabled, setIsMusicEnabled] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('nightrider-music-enabled') === 'true';
+    } catch (error) {
+      console.error("Failed to read Music preference from localStorage", error);
+      return false;
+    }
+  });
+
+  const [currentTrack, setCurrentTrack] = useState<string | null>(null);
 
   useEffect(() => {
-    setLoadingMessage(loadingMessages[0] || 'Initializing systems...');
-    
     const fetchAndCreateComic = async () => {
-      let messageIndex = 0;
-      const messageInterval = setInterval(() => {
-        messageIndex = (messageIndex + 1) % loadingMessages.length;
-        setLoadingMessage(loadingMessages[messageIndex]);
-      }, 2500);
-
+      setIsLoading(true);
       let hasError = false;
       try {
-        const panelPrompts = await generateStoryPanels(STORY_TEXT);
-
-        const panelDataPromises = panelPrompts.map(async (panel) => {
-          const [imageUrl, soundscape] = await Promise.all([
-            generatePostApocalypticImage(panel.imagePrompt),
-            generateAtmosphericText(panel.soundscapePrompt),
-          ]);
-          return { text: panel.text, imageUrl, soundscape };
+        const chapters = STORY_TEXT.trim().split(/\n\s*\nRozdział/).map((chunk, index) => {
+          if (index === 0) return chunk.replace(/^Rozdział\s*\d+:\s*/, '');
+          return 'Rozdział' + chunk;
         });
 
-        const results = await Promise.all(panelDataPromises);
-        setSourcePanels(results);
-        setDisplayedPanels(results);
-        setPanelsCache({ pl: results });
+        const totalChapters = chapters.length;
+        let allPanels: PanelData[] = [];
+
+        for (let i = 0; i < totalChapters; i++) {
+            const chapterText = chapters[i];
+            
+            setLoadingMessage(t('generatingChapter', { current: i + 1, total: totalChapters }));
+            const panelPrompts = await generateStoryPanels(chapterText);
+            
+            const chapterPanels: PanelData[] = [];
+            const totalPanelsInChapter = panelPrompts.length;
+
+            for (let j = 0; j < totalPanelsInChapter; j++) {
+              setLoadingMessage(t('generatingImagesForChapter', { current: j + 1, total: totalPanelsInChapter, chapter: i + 1 }));
+              const panel = panelPrompts[j];
+              const [imageUrl, soundscape] = await Promise.all([
+                  generatePostApocalypticImage(panel.imagePrompt),
+                  generateAtmosphericText(panel.soundscapePrompt),
+              ]);
+              chapterPanels.push({ text: panel.text, imageUrl, soundscape, chapter: i + 1 });
+            }
+
+            allPanels = [...allPanels, ...chapterPanels];
+        }
+        
+        if (currentPanelIndex >= allPanels.length) {
+          setCurrentPanelIndex(0);
+        }
+
+        setSourcePanels(allPanels);
+        setDisplayedPanels(allPanels);
+        setPanelsCache({ pl: allPanels });
+
       } catch (error) {
         hasError = true;
         console.error("Failed to generate comic book panels:", error);
         setLoadingMessage(t('criticalError'));
       } finally {
-        clearInterval(messageInterval);
         if (!hasError) {
            setIsLoading(false);
         }
@@ -57,13 +104,70 @@ const App: React.FC = () => {
     };
 
     fetchAndCreateComic();
-  }, [loadingMessages, t]);
+  }, [t]);
+
+  useEffect(() => {
+    try {
+      if (!isLoading) {
+        localStorage.setItem('nightrider-panel-index', String(currentPanelIndex));
+      }
+    } catch (error) {
+      console.error("Failed to save panel index to localStorage", error);
+    }
+  }, [currentPanelIndex, isLoading]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('nightrider-tts-enabled', String(isTtsEnabled));
+    } catch (error) {
+      console.error("Failed to save TTS preference to localStorage", error);
+    }
+  }, [isTtsEnabled]);
+  
+  useEffect(() => {
+    try {
+      localStorage.setItem('nightrider-music-enabled', String(isMusicEnabled));
+    } catch (error) {
+      console.error("Failed to save Music preference to localStorage", error);
+    }
+  }, [isMusicEnabled]);
+
+  useEffect(() => {
+    window.speechSynthesis.cancel();
+
+    if (isTtsEnabled && displayedPanels.length > 0 && displayedPanels[currentPanelIndex]) {
+      const panel = displayedPanels[currentPanelIndex];
+      const textToSpeak = `${panel.text}\n\n${panel.soundscape}`;
+      
+      const utterance = new SpeechSynthesisUtterance(textToSpeak);
+      utterance.lang = language === 'pl' ? 'pl-PL' : 'en-US';
+      
+      const speakTimeout = setTimeout(() => {
+        window.speechSynthesis.speak(utterance);
+      }, 100);
+
+      return () => {
+        clearTimeout(speakTimeout);
+        window.speechSynthesis.cancel();
+      };
+    }
+  }, [currentPanelIndex, isTtsEnabled, displayedPanels, language]);
+
+  useEffect(() => {
+    if (isMusicEnabled && displayedPanels.length > 0 && displayedPanels[currentPanelIndex]) {
+      const panel = displayedPanels[currentPanelIndex];
+      const track = getTrackForSoundscape(panel.soundscape);
+      setCurrentTrack(track);
+    } else {
+      setCurrentTrack(null);
+    }
+  }, [currentPanelIndex, isMusicEnabled, displayedPanels]);
 
   useEffect(() => {
     if (!sourcePanels.length) return;
 
     const handleLanguageChange = async () => {
-      if (panelsCache[language]) {
+      if (panelsCache[language] && panelsCache[language].length === sourcePanels.length) {
         setDisplayedPanels(panelsCache[language]);
       } else {
         setIsTranslating(true);
@@ -73,7 +177,6 @@ const App: React.FC = () => {
           setDisplayedPanels(translated);
         } catch (error) {
           console.error(`Failed to translate story to ${language}:`, error);
-          // Fallback to source language if translation fails
           setDisplayedPanels(sourcePanels);
         } finally {
           setIsTranslating(false);
@@ -106,6 +209,18 @@ const App: React.FC = () => {
     };
   }, [goToNextPanel, goToPrevPanel]);
 
+  const handleSelectChapter = useCallback((chapterNumber: number) => {
+    const firstPanelOfChapterIndex = displayedPanels.findIndex(p => p.chapter === chapterNumber);
+    if (firstPanelOfChapterIndex !== -1) {
+      setCurrentPanelIndex(firstPanelOfChapterIndex);
+    }
+  }, [displayedPanels]);
+
+  const handleToggleTts = useCallback(() => setIsTtsEnabled(prev => !prev), []);
+  const handleToggleMusic = useCallback(() => setIsMusicEnabled(prev => !prev), []);
+
+  const totalChapters = displayedPanels.length > 0 ? Math.max(...displayedPanels.map(p => p.chapter)) : 0;
+  const currentChapter = displayedPanels[currentPanelIndex]?.chapter || 0;
 
   if (isLoading) {
     return <LoadingScreen message={loadingMessage} />;
@@ -113,7 +228,15 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen h-screen w-screen bg-black text-gray-300 font-sans flex flex-col">
-      <Header />
+      <Header 
+        totalChapters={totalChapters}
+        currentChapter={currentChapter}
+        onSelectChapter={handleSelectChapter}
+        isTtsEnabled={isTtsEnabled}
+        onToggleTts={handleToggleTts}
+        isMusicEnabled={isMusicEnabled}
+        onToggleMusic={handleToggleMusic}
+      />
       <main className="flex-grow relative flex items-center justify-center">
         {displayedPanels.length > 0 && (
           <ComicPanel 
@@ -129,6 +252,7 @@ const App: React.FC = () => {
         onNext={goToNextPanel}
         onPrev={goToPrevPanel}
       />
+      <AudioPlayer src={currentTrack} isPlaying={isMusicEnabled} />
     </div>
   );
 };

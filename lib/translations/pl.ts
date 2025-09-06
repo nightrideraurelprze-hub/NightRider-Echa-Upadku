@@ -4,6 +4,7 @@ export const pl = {
   prevButton: '< POPRZEDNI',
   nextButton: 'NASTĘPNY >',
   panelLabel: 'PANEL',
+  chapterLabel: 'ROZDZIAŁ',
   loadingMessages: [
     'Tworzenie scenorysu apokalipsy...',
     'Rysowanie paneli narracyjnych...',
@@ -15,4 +16,10 @@ export const pl = {
   criticalError: 'Błąd krytyczny podczas ładowania historii. Proszę odświeżyć stronę.',
   languageName: 'Polish',
   translatingStory: 'Tłumaczenie historii...',
+  generatingChapter: 'Generowanie rozdziału {{current}} z {{total}}...',
+  generatingImagesForChapter: 'Generowanie obrazu {{current}} z {{total}} dla rozdziału {{chapter}}...',
+  enableNarration: 'Włącz narrację audio',
+  disableNarration: 'Wyłącz narrację audio',
+  enableMusic: 'Włącz muzykę w tle',
+  disableMusic: 'Wyłącz muzykę w tle',
 };

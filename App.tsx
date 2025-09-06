@@ -9,6 +9,12 @@ import { STORY_TEXT } from './constants';
 import type { PanelData, PanelsCache } from './types';
 import { useLanguage } from './hooks/useLanguage';
 import { getTrackForSoundscape } from './lib/audioTracks';
+import { mockPanelData, mockTranslatedPanelData } from './lib/mockPanelData';
+
+// --- PREVIEW MODE SWITCH ---
+// Set to `false` to use local mock data instead of calling the Gemini API.
+// This is useful for UI development when the API quota is exhausted.
+const USE_API = false;
 
 const App: React.FC = () => {
   const [sourcePanels, setSourcePanels] = useState<PanelData[]>([]);
@@ -52,6 +58,24 @@ const App: React.FC = () => {
   useEffect(() => {
     const fetchAndCreateComic = async () => {
       setIsLoading(true);
+      if (!USE_API) {
+        console.log("--- RUNNING IN PREVIEW MODE ---");
+        setLoadingMessage('Loading from local preview data...');
+        // Simulate a short delay for a better user experience
+        setTimeout(() => {
+          setSourcePanels(mockPanelData);
+          setPanelsCache({
+            pl: mockPanelData,
+            en: mockTranslatedPanelData
+          });
+          // Set initial displayed panels based on current language
+          const initialLang = localStorage.getItem('nightrider-language') || 'pl';
+          setDisplayedPanels(initialLang === 'en' ? mockTranslatedPanelData : mockPanelData);
+          setIsLoading(false);
+        }, 500);
+        return;
+      }
+
       let hasError = false;
       try {
         const chapters = STORY_TEXT.trim().split(/\n\s*\nRozdział/).map((chunk, index) => {
@@ -92,10 +116,14 @@ const App: React.FC = () => {
         setDisplayedPanels(allPanels);
         setPanelsCache({ pl: allPanels });
 
-      } catch (error) {
+      } catch (error: any) {
         hasError = true;
         console.error("Failed to generate comic book panels:", error);
-        setLoadingMessage(t('criticalError'));
+        if (error?.message === 'DAILY_QUOTA_EXCEEDED') {
+            setLoadingMessage(t('dailyQuotaError'));
+        } else {
+            setLoadingMessage(t('criticalError'));
+        }
       } finally {
         if (!hasError) {
            setIsLoading(false);
@@ -167,9 +195,9 @@ const App: React.FC = () => {
     if (!sourcePanels.length) return;
 
     const handleLanguageChange = async () => {
-      if (panelsCache[language] && panelsCache[language].length === sourcePanels.length) {
+      if (panelsCache[language] && panelsCache[language].length > 0) {
         setDisplayedPanels(panelsCache[language]);
-      } else {
+      } else if (USE_API) { // Only call API if USE_API is true
         setIsTranslating(true);
         try {
           const translated = await translatePanels(sourcePanels, languageName);
@@ -177,7 +205,7 @@ const App: React.FC = () => {
           setDisplayedPanels(translated);
         } catch (error) {
           console.error(`Failed to translate story to ${language}:`, error);
-          setDisplayedPanels(sourcePanels);
+          setDisplayedPanels(sourcePanels); // Fallback to source
         } finally {
           setIsTranslating(false);
         }
@@ -197,6 +225,7 @@ const App: React.FC = () => {
   
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
+      if (isLoading || isTranslating) return;
       if (event.key === 'ArrowRight') {
         goToNextPanel();
       } else if (event.key === 'ArrowLeft') {
@@ -207,7 +236,7 @@ const App: React.FC = () => {
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [goToNextPanel, goToPrevPanel]);
+  }, [goToNextPanel, goToPrevPanel, isLoading, isTranslating]);
 
   const handleSelectChapter = useCallback((chapterNumber: number) => {
     const firstPanelOfChapterIndex = displayedPanels.findIndex(p => p.chapter === chapterNumber);

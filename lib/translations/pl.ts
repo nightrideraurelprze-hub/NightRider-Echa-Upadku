@@ -22,4 +22,5 @@ export const pl = {
   disableNarration: 'Wyłącz narrację audio',
   enableMusic: 'Włącz muzykę w tle',
   disableMusic: 'Wyłącz muzykę w tle',
+  dailyQuotaError: 'Dzienny limit zapytań API został osiągnięty. Spróbuj ponownie jutro.',
 };

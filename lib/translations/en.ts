@@ -22,4 +22,5 @@ export const en = {
   disableNarration: 'Disable audio narration',
   enableMusic: 'Enable background music',
   disableMusic: 'Disable background music',
+  dailyQuotaError: 'The daily API quota has been reached. Please try again tomorrow.',
 };

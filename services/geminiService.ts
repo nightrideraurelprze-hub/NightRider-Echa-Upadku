@@ -1,11 +1,14 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import type { PanelPromptData, PanelData } from '../types';
 
-if (!process.env.API_KEY) {
-  throw new Error("API_KEY environment variable not set");
+// This check is important for the live API mode, but won't block preview mode.
+if (process.env.NODE_ENV !== 'test' && !process.env.API_KEY) {
+  // In a real app, you might want a more robust way to handle this
+  // but for this project, we assume it's set when USE_API is true.
+  console.warn("API_KEY environment variable not set. The app will only work in preview mode.");
 }
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
 
 const panelSchema = {
   type: Type.OBJECT,
@@ -38,21 +41,29 @@ async function withRetry<T>(fn: () => Promise<T>, maxRetries = 5, initialDelay =
     } catch (error: any) {
       attempt++;
       
-      const errorMessage = error?.message || '';
+      const errorString = JSON.stringify(error) || error?.message || '';
+
+      // Check for non-retriable daily quota error first.
+      if (errorString.includes('PredictRequestsPerDay')) {
+         console.error("Daily API quota exceeded. Aborting retries.", error);
+         throw new Error("DAILY_QUOTA_EXCEEDED");
+      }
+      
       const isRetriable = 
-        errorMessage.includes('429') || 
-        errorMessage.includes('RESOURCE_EXHAUSTED') ||
-        errorMessage.includes('503') ||
-        errorMessage.includes('UNAVAILABLE') ||
-        errorMessage.includes('No image was generated');
+        errorString.includes('429') || 
+        errorString.includes('RESOURCE_EXHAUSTED') ||
+        errorString.includes('503') ||
+        errorString.includes('500') ||
+        errorString.includes('UNAVAILABLE') ||
+        errorString.includes('No image was generated');
 
       if (isRetriable && attempt < maxRetries) {
-        console.warn(`Retriable error detected: "${errorMessage}". Retrying in ${delay / 1000}s... (Attempt ${attempt}/${maxRetries})`);
+        console.warn(`Retriable error detected: "${errorString}". Retrying in ${delay / 1000}s... (Attempt ${attempt}/${maxRetries})`);
         await sleep(delay);
         delay *= 2; // Exponential backoff
       } else {
         console.error(`Function failed after ${attempt} attempts or due to a non-retriable error.`, error);
-        throw error; // Re-throw the error to be caught by the caller
+        throw error; // Re-throw the original error
       }
     }
   }

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect } from 'react';
+import React from 'react';
 import { Header } from './components/Header';
 import { LoadingScreen } from './components/LoadingScreen';
 import { ComicPanel } from './components/ComicPanel';
@@ -22,43 +22,18 @@ const App: React.FC = () => {
     isTtsEnabled,
     isMusicEnabled,
     currentTrack,
-    narrationAudioSrc,
+    narrationAudioBlob,
     isAudioUnlocked,
   } = state;
   
   const {
-    setCurrentPanelIndex,
+    goToNextPanel,
+    goToPrevPanel,
     handleSelectChapter,
     handleToggleTts,
     handleToggleMusic,
     handleUserInteraction,
   } = actions;
-
-  const goToNextPanel = useCallback(() => {
-    handleUserInteraction();
-    setCurrentPanelIndex(prevIndex => Math.min(prevIndex + 1, displayedPanels.length - 1));
-  }, [displayedPanels.length, setCurrentPanelIndex, handleUserInteraction]);
-
-  const goToPrevPanel = useCallback(() => {
-    handleUserInteraction();
-    setCurrentPanelIndex(prevIndex => Math.max(prevIndex - 1, 0));
-  }, [setCurrentPanelIndex, handleUserInteraction]);
-  
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (isLoading || isTranslating) return;
-      handleUserInteraction();
-      if (event.key === 'ArrowRight') {
-        goToNextPanel();
-      } else if (event.key === 'ArrowLeft') {
-        goToPrevPanel();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [goToNextPanel, goToPrevPanel, isLoading, isTranslating, handleUserInteraction]);
   
   const totalChapters = displayedPanels.length > 0 ? Math.max(...displayedPanels.map(p => p.chapter)) : 0;
   const currentChapter = displayedPanels[currentPanelIndex]?.chapter || 0;
@@ -96,7 +71,7 @@ const App: React.FC = () => {
         onUserInteraction={handleUserInteraction}
       />
       <AudioPlayer src={currentTrack} isPlaying={isMusicEnabled && isAudioUnlocked} />
-      <NarrationPlayer src={narrationAudioSrc} isPlaying={isTtsEnabled && isAudioUnlocked} />
+      <NarrationPlayer blob={narrationAudioBlob} isPlaying={isTtsEnabled && isAudioUnlocked} />
     </div>
   );
 };

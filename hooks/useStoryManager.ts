@@ -1,30 +1,14 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { generateStoryPanels, generateAtmosphericText, translatePanels } from '../services/geminiService';
 import * as ttsService from '../services/ttsService';
-import { STORY_CHAPTERS } from '../constants';
+import { STORY_CHAPTERS, STORY_CACHE_KEY } from '../lib/storyContent';
 import type { PanelData, PanelsCache } from '../types';
 import { useLanguage } from './useLanguage';
 import { getImageUrlForPanel } from '../lib/imageMapping';
 import { mockPanelData, mockTranslatedPanelData } from '../lib/mockPanelData';
 import { getTrackForSoundscape } from '../lib/audioTracks';
 import * as cacheService from '../services/cacheService';
-
-// --- PREVIEW MODE SWITCH ---
-const USE_API = false;
-
-// --- CACHE ---
-const CACHE_VERSION = '1.1';
-const STORY_CACHE_KEY = `nightrider-story-cache-v${CACHE_VERSION}`;
-
-if (USE_API) {
-  const missingKeys = [];
-  if (!process.env.API_KEY) missingKeys.push('API_KEY (for Gemini)');
-  if (!process.env.ELEVENLABS_API_KEY) missingKeys.push('ELEVENLABS_API_KEY');
-
-  if (missingKeys.length > 0) {
-    console.warn(`[API Mode] The following environment variables are not set: ${missingKeys.join(', ')}. The application may not function correctly.`);
-  }
-}
+import { USE_API, GEMINI_API_KEY, ELEVENLABS_API_KEY } from '../config';
 
 export const useStoryManager = () => {
   const [sourcePanels, setSourcePanels] = useState<PanelData[]>([]);
@@ -41,7 +25,7 @@ export const useStoryManager = () => {
   const [isTtsEnabled, setIsTtsEnabled] = useState<boolean>(() => localStorage.getItem('nightrider-tts-enabled') === 'true');
   const [isMusicEnabled, setIsMusicEnabled] = useState<boolean>(() => localStorage.getItem('nightrider-music-enabled') === 'true');
   
-  const [narrationAudioSrc, setNarrationAudioSrc] = useState<string | null>(null);
+  const [narrationAudioBlob, setNarrationAudioBlob] = useState<Blob | null>(null);
   const [isNarrationLoading, setIsNarrationLoading] = useState<boolean>(false);
   const [currentTrack, setCurrentTrack] = useState<string | null>(null);
 
@@ -70,12 +54,23 @@ export const useStoryManager = () => {
         }, 500);
         return;
       }
+      
+      // Centralized API Key Check
+      const missingKeys = [];
+      if (!GEMINI_API_KEY) missingKeys.push('GEMINI_API_KEY');
+      if (!ELEVENLABS_API_KEY) missingKeys.push('ELEVENLABS_API_KEY');
+      if (missingKeys.length > 0) {
+        console.error(`[API Mode] The following API keys are not set in config.ts: ${missingKeys.join(', ')}. The application cannot function correctly.`);
+        setLoadingMessage(`Critical Error: API Key(s) for ${missingKeys.join(', ')} are missing.`);
+        return;
+      }
 
       const cachedData = await cacheService.getStoryFromCache(STORY_CACHE_KEY);
       if (cachedData) {
         setLoadingMessage(t('loadingAssets'));
         setSourcePanels(cachedData);
         setPanelsCache({ pl: cachedData });
+        setDisplayedPanels(cachedData); // Initially show Polish
         setIsLoading(false);
         return;
       }
@@ -130,7 +125,7 @@ export const useStoryManager = () => {
   useEffect(() => {
     localStorage.setItem('nightrider-tts-enabled', String(isTtsEnabled));
     if (!isTtsEnabled) {
-      setNarrationAudioSrc(null); // Clear audio source when disabled
+      setNarrationAudioBlob(null); // Clear audio blob when disabled
     }
   }, [isTtsEnabled]);
   
@@ -140,13 +135,11 @@ export const useStoryManager = () => {
   
   useEffect(() => {
     if (!isTtsEnabled || displayedPanels.length === 0) {
-      setNarrationAudioSrc(null);
+      setNarrationAudioBlob(null);
       return;
     }
 
     let isMounted = true;
-    let objectUrl: string | null = null;
-    
     const currentPanel = displayedPanels[currentPanelIndex];
     if (!currentPanel) return;
 
@@ -168,15 +161,16 @@ export const useStoryManager = () => {
         }
 
         if (isMounted && audioBlob && audioBlob.size > 0) {
-          objectUrl = URL.createObjectURL(audioBlob);
-          setNarrationAudioSrc(objectUrl);
-        } else if (audioBlob && audioBlob.size === 0) {
-          console.warn(`Received empty audio blob for key: ${narrationCacheKey}. Not playing.`);
-           if (isMounted) setNarrationAudioSrc(null);
+           setNarrationAudioBlob(audioBlob);
+        } else {
+           if (isMounted) setNarrationAudioBlob(null);
+           if (audioBlob && audioBlob.size === 0) {
+             console.warn(`Received empty audio blob for key: ${narrationCacheKey}. Not playing.`);
+           }
         }
       } catch (error) {
         console.error("Failed to load narration:", error);
-        if (isMounted) setNarrationAudioSrc(null);
+        if (isMounted) setNarrationAudioBlob(null);
       } finally {
         if (isMounted) setIsNarrationLoading(false);
       }
@@ -186,10 +180,7 @@ export const useStoryManager = () => {
 
     return () => {
       isMounted = false;
-      if (objectUrl) {
-        URL.revokeObjectURL(objectUrl);
-      }
-      setNarrationAudioSrc(null); // Stop playback on navigate
+      setNarrationAudioBlob(null); // Stop playback on navigate
     };
   }, [currentPanelIndex, isTtsEnabled, displayedPanels, language]);
 
@@ -228,6 +219,32 @@ export const useStoryManager = () => {
     handleLanguageChange();
   }, [language, languageName, sourcePanels, panelsCache, isLoading]);
   
+  const goToNextPanel = useCallback(() => {
+    handleUserInteraction();
+    setCurrentPanelIndex(prevIndex => Math.min(prevIndex + 1, displayedPanels.length - 1));
+  }, [displayedPanels.length, handleUserInteraction]);
+
+  const goToPrevPanel = useCallback(() => {
+    handleUserInteraction();
+    setCurrentPanelIndex(prevIndex => Math.max(prevIndex - 1, 0));
+  }, [handleUserInteraction]);
+  
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (isLoading || isTranslating) return;
+      handleUserInteraction();
+      if (event.key === 'ArrowRight') {
+        goToNextPanel();
+      } else if (event.key === 'ArrowLeft') {
+        goToPrevPanel();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [goToNextPanel, goToPrevPanel, isLoading, isTranslating, handleUserInteraction]);
+
   const handleSelectChapter = useCallback((chapterNumber: number) => {
     handleUserInteraction();
     const firstPanelOfChapterIndex = displayedPanels.findIndex(p => p.chapter === chapterNumber);
@@ -254,11 +271,13 @@ export const useStoryManager = () => {
       isTtsEnabled,
       isMusicEnabled,
       currentTrack,
-      narrationAudioSrc,
+      narrationAudioBlob,
       isNarrationLoading,
       isAudioUnlocked,
     },
     actions: {
+      goToNextPanel,
+      goToPrevPanel,
       setCurrentPanelIndex,
       handleSelectChapter,
       handleToggleTts,

@@ -1,55 +1,50 @@
 import React, { useRef, useEffect } from 'react';
 
 interface NarrationPlayerProps {
-  src: string | null;
+  blob: Blob | null;
   isPlaying: boolean;
 }
 
-export const NarrationPlayer: React.FC<NarrationPlayerProps> = ({ src, isPlaying }) => {
+export const NarrationPlayer: React.FC<NarrationPlayerProps> = ({ blob, isPlaying }) => {
   const audioRef = useRef<HTMLAudioElement>(null);
-  const prevSrcRef = useRef<string | null>(null);
+  const objectUrlRef = useRef<string | null>(null);
 
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
 
-    // If src is null/undefined, fully reset the player state
-    if (!src) {
-        if (!audio.paused) {
-            audio.pause();
-        }
-        if (audio.src) {
-            audio.src = '';
-            audio.removeAttribute('src');
-            audio.load();
-        }
-        prevSrcRef.current = null;
-        return;
+    // Clean up previous object URL if it exists
+    if (objectUrlRef.current) {
+      URL.revokeObjectURL(objectUrlRef.current);
+      objectUrlRef.current = null;
     }
 
-    if (isPlaying) {
-        if (src !== prevSrcRef.current) {
-            audio.src = src;
-            audio.load(); // Load the new source
-            const playPromise = audio.play();
-            if (playPromise !== undefined) {
-                playPromise.catch(e => console.error("Narration playback failed:", e));
-            }
-        } else if (audio.paused) {
-            const playPromise = audio.play();
-            if (playPromise !== undefined) {
-                playPromise.catch(e => console.error("Narration playback failed:", e));
-            }
-        }
+    if (blob && isPlaying) {
+      // Create a new URL for the new blob
+      objectUrlRef.current = URL.createObjectURL(blob);
+      audio.src = objectUrlRef.current;
+      audio.load();
+      const playPromise = audio.play();
+      if (playPromise !== undefined) {
+        playPromise.catch(e => console.error("Audio play failed:", e));
+      }
     } else {
-        if (!audio.paused) {
-            audio.pause();
-        }
+      // If not playing or no blob, ensure player is stopped and reset.
+      if (!audio.paused) {
+        audio.pause();
+      }
+      audio.removeAttribute('src');
+      audio.load();
     }
     
-    prevSrcRef.current = src;
-
-  }, [src, isPlaying]);
+    // Cleanup function to run when the component unmounts or dependencies change
+    return () => {
+      if (objectUrlRef.current) {
+        URL.revokeObjectURL(objectUrlRef.current);
+        objectUrlRef.current = null;
+      }
+    };
+  }, [blob, isPlaying]);
 
   return <audio ref={audioRef} />;
 };

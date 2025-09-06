@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>NightRider: Echoes of the Fall</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      body {
+        font-family: 'Orbitron', sans-serif;
+      }
+      .ken-burns {
+        animation: ken-burns 15s ease-out infinite both;
+      }
+      .caption-bg {
+        background-color: rgba(0, 0, 0, 0.7);
+        backdrop-filter: blur(4px);
+        -webkit-backdrop-filter: blur(4px);
+        border-top: 1px solid rgba(251, 191, 36, 0.3);
+      }
+      .panel-enter {
+        opacity: 0;
+      }
+      .panel-enter-active {
+        opacity: 1;
+        transition: opacity 700ms ease-in-out;
+      }
+      .panel-exit {
+        opacity: 1;
+      }
+      .panel-exit-active {
+        opacity: 0;
+        transition: opacity 700ms ease-in-out;
+      }
+
+      @keyframes ken-burns {
+        0% {
+          transform: scale(1) translate(0, 0);
+        }
+        50% {
+          transform: scale(1.1) translate(-2%, 2%);
+        }
+        100% {
+          transform: scale(1) translate(0, 0);
+        }
+      }
+    </style>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Roboto:wght@300;400&display=swap" rel="stylesheet">
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ['Roboto', 'sans-serif'],
+              display: ['Orbitron', 'sans-serif'],
+            },
+            animation: {
+              'fade-in': 'fadeIn 1.5s ease-in-out',
+              'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+            },
+            keyframes: {
+              fadeIn: {
+                '0%': { opacity: 0 },
+                '100%': { opacity: 1 },
+              },
+            }
+          }
+        }
+      }
+    </script>
+  <script type="importmap">
+{
+  "imports": {
+    "react": "https://aistudiocdn.com/react@^19.1.1",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.1.1/",
+    "react/": "https://aistudiocdn.com/react@^19.1.1/",
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.17.0"
+  }
+}
+</script>
+</head>
+  <body class="bg-black overflow-hidden">
+    <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
+  </body>
+</html>

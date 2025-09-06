@@ -1,0 +1,5 @@
+{
+  "name": "NightRider: Echoes of the Fall",
+  "description": "An immersive, AI-powered visual experience for a post-apocalyptic story. The application uses the Gemini API to generate stunning images and atmospheric descriptions for each chapter, bringing the world of NightRider to life.",
+  "requestFramePermissions": []
+}

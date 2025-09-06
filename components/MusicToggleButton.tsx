@@ -4,9 +4,10 @@ import { useLanguage } from '../hooks/useLanguage';
 interface MusicToggleButtonProps {
   isEnabled: boolean;
   onToggle: () => void;
+  onUserInteraction: () => void;
 }
 
-export const MusicToggleButton: React.FC<MusicToggleButtonProps> = ({ isEnabled, onToggle }) => {
+export const MusicToggleButton: React.FC<MusicToggleButtonProps> = ({ isEnabled, onToggle, onUserInteraction }) => {
   const { t } = useLanguage();
 
   const SvgMusicOn = () => (
@@ -27,7 +28,10 @@ export const MusicToggleButton: React.FC<MusicToggleButtonProps> = ({ isEnabled,
   
   return (
     <button
-      onClick={onToggle}
+      onClick={() => {
+        onToggle();
+        onUserInteraction();
+      }}
       className={`${baseClass} ${activeClass}`}
       aria-label={t(isEnabled ? "disableMusic" : "enableMusic")}
       aria-pressed={isEnabled}

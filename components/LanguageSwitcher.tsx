@@ -3,11 +3,16 @@ import { useLanguage } from '../hooks/useLanguage';
 
 type Language = 'pl' | 'en';
 
-export const LanguageSwitcher: React.FC = () => {
+interface LanguageSwitcherProps {
+  onUserInteraction: () => void;
+}
+
+export const LanguageSwitcher: React.FC<LanguageSwitcherProps> = ({ onUserInteraction }) => {
   const { language, setLanguage } = useLanguage();
 
   const handleLanguageChange = (lang: Language) => {
     setLanguage(lang);
+    onUserInteraction();
   };
 
   const getButtonClass = (lang: Language) => {

@@ -4,9 +4,10 @@ import { useLanguage } from '../hooks/useLanguage';
 interface AudioToggleButtonProps {
   isEnabled: boolean;
   onToggle: () => void;
+  onUserInteraction: () => void;
 }
 
-export const AudioToggleButton: React.FC<AudioToggleButtonProps> = ({ isEnabled, onToggle }) => {
+export const AudioToggleButton: React.FC<AudioToggleButtonProps> = ({ isEnabled, onToggle, onUserInteraction }) => {
   const { t } = useLanguage();
   
   const SvgSpeakerOn = () => (
@@ -27,7 +28,10 @@ export const AudioToggleButton: React.FC<AudioToggleButtonProps> = ({ isEnabled,
   
   return (
     <button
-      onClick={onToggle}
+      onClick={() => {
+        onToggle();
+        onUserInteraction();
+      }}
       className={`${baseClass} ${activeClass}`}
       aria-label={t(isEnabled ? "disableNarration" : "enableNarration")}
       aria-pressed={isEnabled}

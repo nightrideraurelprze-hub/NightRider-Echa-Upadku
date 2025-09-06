@@ -5,9 +5,10 @@ interface ChapterSelectorProps {
   totalChapters: number;
   currentChapter: number;
   onSelectChapter: (chapter: number) => void;
+  onUserInteraction: () => void;
 }
 
-export const ChapterSelector: React.FC<ChapterSelectorProps> = ({ totalChapters, currentChapter, onSelectChapter }) => {
+export const ChapterSelector: React.FC<ChapterSelectorProps> = ({ totalChapters, currentChapter, onSelectChapter, onUserInteraction }) => {
   const { t } = useLanguage();
   const [isOpen, setIsOpen] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -33,7 +34,10 @@ export const ChapterSelector: React.FC<ChapterSelectorProps> = ({ totalChapters,
   return (
     <div className="relative" ref={wrapperRef}>
       <button 
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={() => {
+          setIsOpen(!isOpen);
+          onUserInteraction();
+        }}
         className="px-4 py-2 font-display text-base tracking-wider text-amber-400 border-2 border-amber-400/50 rounded-md transition-colors duration-300 hover:bg-amber-400/20 flex items-center"
         aria-haspopup="true"
         aria-expanded={isOpen}

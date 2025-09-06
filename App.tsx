@@ -1,268 +1,53 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useCallback, useEffect } from 'react';
 import { Header } from './components/Header';
 import { LoadingScreen } from './components/LoadingScreen';
 import { ComicPanel } from './components/ComicPanel';
 import { Navigation } from './components/Navigation';
 import { AudioPlayer } from './components/AudioPlayer';
-import { generateStoryPanels, generatePostApocalypticImage, generateAtmosphericText, translatePanels } from './services/geminiService';
-import { STORY_TEXT } from './constants';
-import type { PanelData, PanelsCache } from './types';
-import { useLanguage } from './hooks/useLanguage';
-import { getTrackForSoundscape } from './lib/audioTracks';
-import { mockPanelData, mockTranslatedPanelData } from './lib/mockPanelData';
-
-// --- PREVIEW MODE SWITCH ---
-// Set to `false` to use local mock data instead of calling the Gemini API.
-// This is useful for UI development when the API quota is exhausted.
-const USE_API = false;
+import { useStoryManager } from './hooks/useStoryManager';
+import { NarrationPlayer } from './components/NarrationPlayer';
 
 const App: React.FC = () => {
-  const [sourcePanels, setSourcePanels] = useState<PanelData[]>([]);
-  const [displayedPanels, setDisplayedPanels] = useState<PanelData[]>([]);
-  const [panelsCache, setPanelsCache] = useState<PanelsCache>({ pl: [] });
-  const [currentPanelIndex, setCurrentPanelIndex] = useState<number>(() => {
-    try {
-      const savedIndex = localStorage.getItem('nightrider-panel-index');
-      const parsedIndex = savedIndex ? parseInt(savedIndex, 10) : 0;
-      return isNaN(parsedIndex) ? 0 : parsedIndex;
-    } catch (error) {
-      console.error("Failed to read panel index from localStorage", error);
-      return 0;
-    }
-  });
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [isTranslating, setIsTranslating] = useState<boolean>(false);
-  const [loadingMessage, setLoadingMessage] = useState<string>('');
-  const { t, language, languageName } = useLanguage();
+  const {
+    state,
+    actions,
+  } = useStoryManager();
+
+  const {
+    isLoading,
+    isTranslating,
+    loadingMessage,
+    displayedPanels,
+    currentPanelIndex,
+    isTtsEnabled,
+    isMusicEnabled,
+    currentTrack,
+    narrationAudioSrc,
+    isAudioUnlocked,
+  } = state;
   
-  const [isTtsEnabled, setIsTtsEnabled] = useState<boolean>(() => {
-    try {
-      return localStorage.getItem('nightrider-tts-enabled') === 'true';
-    } catch (error) {
-      console.error("Failed to read TTS preference from localStorage", error);
-      return false;
-    }
-  });
+  const {
+    setCurrentPanelIndex,
+    handleSelectChapter,
+    handleToggleTts,
+    handleToggleMusic,
+    handleUserInteraction,
+  } = actions;
 
-  const [isMusicEnabled, setIsMusicEnabled] = useState<boolean>(() => {
-    try {
-      return localStorage.getItem('nightrider-music-enabled') === 'true';
-    } catch (error) {
-      console.error("Failed to read Music preference from localStorage", error);
-      return false;
-    }
-  });
-  
-  const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
-  const [currentTrack, setCurrentTrack] = useState<string | null>(null);
-  
-  useEffect(() => {
-    const loadVoices = () => {
-      setVoices(window.speechSynthesis.getVoices());
-    };
-    // Initial load
-    loadVoices();
-    // Update when voices change
-    window.speechSynthesis.onvoiceschanged = loadVoices;
-  }, []);
-
-  useEffect(() => {
-    const fetchAndCreateComic = async () => {
-      setIsLoading(true);
-      if (!USE_API) {
-        console.log("--- RUNNING IN PREVIEW MODE ---");
-        setLoadingMessage('Loading from local preview data...');
-        // Simulate a short delay for a better user experience
-        setTimeout(() => {
-          setSourcePanels(mockPanelData);
-          setPanelsCache({
-            pl: mockPanelData,
-            en: mockTranslatedPanelData
-          });
-          // Set initial displayed panels based on current language
-          const initialLang = localStorage.getItem('nightrider-language') || 'pl';
-          setDisplayedPanels(initialLang === 'en' ? mockTranslatedPanelData : mockPanelData);
-          setIsLoading(false);
-        }, 500);
-        return;
-      }
-
-      let hasError = false;
-      try {
-        const chapters = STORY_TEXT.trim().split(/\n\s*\nRozdział/).map((chunk, index) => {
-          if (index === 0) return chunk.replace(/^Rozdział\s*\d+:\s*/, '');
-          return 'Rozdział' + chunk;
-        });
-
-        const totalChapters = chapters.length;
-        let allPanels: PanelData[] = [];
-
-        for (let i = 0; i < totalChapters; i++) {
-            const chapterText = chapters[i];
-            
-            setLoadingMessage(t('generatingChapter', { current: i + 1, total: totalChapters }));
-            const panelPrompts = await generateStoryPanels(chapterText);
-            
-            const chapterPanels: PanelData[] = [];
-            const totalPanelsInChapter = panelPrompts.length;
-
-            for (let j = 0; j < totalPanelsInChapter; j++) {
-              setLoadingMessage(t('generatingImagesForChapter', { current: j + 1, total: totalPanelsInChapter, chapter: i + 1 }));
-              const panel = panelPrompts[j];
-              const [imageUrl, soundscape] = await Promise.all([
-                  generatePostApocalypticImage(panel.imagePrompt),
-                  generateAtmosphericText(panel.soundscapePrompt),
-              ]);
-              chapterPanels.push({ 
-                text: panel.text, 
-                imageUrl, 
-                soundscape, 
-                chapter: i + 1,
-                speakerGender: panel.speakerGender 
-              });
-            }
-
-            allPanels = [...allPanels, ...chapterPanels];
-        }
-        
-        if (currentPanelIndex >= allPanels.length) {
-          setCurrentPanelIndex(0);
-        }
-
-        setSourcePanels(allPanels);
-        setDisplayedPanels(allPanels);
-        setPanelsCache({ pl: allPanels });
-
-      } catch (error: any) {
-        hasError = true;
-        console.error("Failed to generate comic book panels:", error);
-        if (error?.message === 'DAILY_QUOTA_EXCEEDED') {
-            setLoadingMessage(t('dailyQuotaError'));
-        } else {
-            setLoadingMessage(t('criticalError'));
-        }
-      } finally {
-        if (!hasError) {
-           setIsLoading(false);
-        }
-      }
-    };
-
-    fetchAndCreateComic();
-  }, [t]);
-
-  useEffect(() => {
-    try {
-      if (!isLoading) {
-        localStorage.setItem('nightrider-panel-index', String(currentPanelIndex));
-      }
-    } catch (error) {
-      console.error("Failed to save panel index to localStorage", error);
-    }
-  }, [currentPanelIndex, isLoading]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem('nightrider-tts-enabled', String(isTtsEnabled));
-    } catch (error) {
-      console.error("Failed to save TTS preference to localStorage", error);
-    }
-  }, [isTtsEnabled]);
-  
-  useEffect(() => {
-    try {
-      localStorage.setItem('nightrider-music-enabled', String(isMusicEnabled));
-    } catch (error) {
-      console.error("Failed to save Music preference to localStorage", error);
-    }
-  }, [isMusicEnabled]);
-
-  useEffect(() => {
-    window.speechSynthesis.cancel();
-
-    if (isTtsEnabled && displayedPanels.length > 0 && displayedPanels[currentPanelIndex] && voices.length > 0) {
-      const panel = displayedPanels[currentPanelIndex];
-      const textToSpeak = `${panel.text}\n\n${panel.soundscape}`;
-      
-      const utterance = new SpeechSynthesisUtterance(textToSpeak);
-      const langCode = language === 'pl' ? 'pl-PL' : 'en-US';
-      utterance.lang = langCode;
-
-      // Voice selection logic
-      const langVoices = voices.filter(v => v.lang === langCode);
-      let selectedVoice: SpeechSynthesisVoice | null = null;
-
-      if (panel.speakerGender === 'male') {
-        selectedVoice = langVoices.find(v => v.name.toLowerCase().includes('male')) || langVoices.find(v => v.name.toLowerCase().includes('męski')) || null;
-      } else if (panel.speakerGender === 'female') {
-        selectedVoice = langVoices.find(v => v.name.toLowerCase().includes('female')) || langVoices.find(v => v.name.toLowerCase().includes('damski')) || langVoices.find(v => v.name.toLowerCase().includes('kobieta')) || null;
-      }
-      
-      // Fallback to the first available voice for the language if a gendered one isn't found
-      utterance.voice = selectedVoice || langVoices[0] || voices.find(v => v.lang === langCode) || null;
-      
-      // For machine, we can alter the pitch and rate
-      if (panel.speakerGender === 'machine') {
-          utterance.pitch = 0.7;
-          utterance.rate = 0.9;
-      }
-
-      const speakTimeout = setTimeout(() => {
-        window.speechSynthesis.speak(utterance);
-      }, 100);
-
-      return () => {
-        clearTimeout(speakTimeout);
-        window.speechSynthesis.cancel();
-      };
-    }
-  }, [currentPanelIndex, isTtsEnabled, displayedPanels, language, voices]);
-
-  useEffect(() => {
-    if (isMusicEnabled && displayedPanels.length > 0 && displayedPanels[currentPanelIndex]) {
-      const panel = displayedPanels[currentPanelIndex];
-      const track = getTrackForSoundscape(panel.soundscape);
-      setCurrentTrack(track);
-    } else {
-      setCurrentTrack(null);
-    }
-  }, [currentPanelIndex, isMusicEnabled, displayedPanels]);
-
-  useEffect(() => {
-    if (!sourcePanels.length) return;
-
-    const handleLanguageChange = async () => {
-      if (panelsCache[language] && panelsCache[language].length > 0) {
-        setDisplayedPanels(panelsCache[language]);
-      } else if (USE_API) { // Only call API if USE_API is true
-        setIsTranslating(true);
-        try {
-          const translated = await translatePanels(sourcePanels, languageName);
-          setPanelsCache(prev => ({ ...prev, [language]: translated }));
-          setDisplayedPanels(translated);
-        } catch (error) {
-          console.error(`Failed to translate story to ${language}:`, error);
-          setDisplayedPanels(sourcePanels); // Fallback to source
-        } finally {
-          setIsTranslating(false);
-        }
-      }
-    };
-
-    handleLanguageChange();
-  }, [language, languageName, sourcePanels, panelsCache]);
-  
   const goToNextPanel = useCallback(() => {
+    handleUserInteraction();
     setCurrentPanelIndex(prevIndex => Math.min(prevIndex + 1, displayedPanels.length - 1));
-  }, [displayedPanels.length]);
+  }, [displayedPanels.length, setCurrentPanelIndex, handleUserInteraction]);
 
   const goToPrevPanel = useCallback(() => {
+    handleUserInteraction();
     setCurrentPanelIndex(prevIndex => Math.max(prevIndex - 1, 0));
-  }, []);
+  }, [setCurrentPanelIndex, handleUserInteraction]);
   
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (isLoading || isTranslating) return;
+      handleUserInteraction();
       if (event.key === 'ArrowRight') {
         goToNextPanel();
       } else if (event.key === 'ArrowLeft') {
@@ -273,18 +58,8 @@ const App: React.FC = () => {
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [goToNextPanel, goToPrevPanel, isLoading, isTranslating]);
-
-  const handleSelectChapter = useCallback((chapterNumber: number) => {
-    const firstPanelOfChapterIndex = displayedPanels.findIndex(p => p.chapter === chapterNumber);
-    if (firstPanelOfChapterIndex !== -1) {
-      setCurrentPanelIndex(firstPanelOfChapterIndex);
-    }
-  }, [displayedPanels]);
-
-  const handleToggleTts = useCallback(() => setIsTtsEnabled(prev => !prev), []);
-  const handleToggleMusic = useCallback(() => setIsMusicEnabled(prev => !prev), []);
-
+  }, [goToNextPanel, goToPrevPanel, isLoading, isTranslating, handleUserInteraction]);
+  
   const totalChapters = displayedPanels.length > 0 ? Math.max(...displayedPanels.map(p => p.chapter)) : 0;
   const currentChapter = displayedPanels[currentPanelIndex]?.chapter || 0;
 
@@ -293,7 +68,7 @@ const App: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen h-screen w-screen bg-black text-gray-300 font-sans flex flex-col">
+    <div className="min-h-screen h-screen w-screen bg-black text-gray-300 font-sans flex flex-col" onClick={handleUserInteraction}>
       <Header 
         totalChapters={totalChapters}
         currentChapter={currentChapter}
@@ -302,6 +77,7 @@ const App: React.FC = () => {
         onToggleTts={handleToggleTts}
         isMusicEnabled={isMusicEnabled}
         onToggleMusic={handleToggleMusic}
+        onUserInteraction={handleUserInteraction}
       />
       <main className="flex-grow relative flex items-center justify-center">
         {displayedPanels.length > 0 && (
@@ -317,8 +93,10 @@ const App: React.FC = () => {
         totalPanels={displayedPanels.length}
         onNext={goToNextPanel}
         onPrev={goToPrevPanel}
+        onUserInteraction={handleUserInteraction}
       />
-      <AudioPlayer src={currentTrack} isPlaying={isMusicEnabled} />
+      <AudioPlayer src={currentTrack} isPlaying={isMusicEnabled && isAudioUnlocked} />
+      <NarrationPlayer src={narrationAudioSrc} isPlaying={isTtsEnabled && isAudioUnlocked} />
     </div>
   );
 };

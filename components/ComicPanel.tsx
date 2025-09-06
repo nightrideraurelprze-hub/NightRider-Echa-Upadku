@@ -1,6 +1,7 @@
 import React from 'react';
 import type { PanelData } from '../types';
 import { useLanguage } from '../hooks/useLanguage';
+import { useCachedImage } from '../hooks/useCachedImage';
 
 interface ComicPanelProps {
   panel: PanelData;
@@ -10,6 +11,7 @@ interface ComicPanelProps {
 
 export const ComicPanel: React.FC<ComicPanelProps> = ({ panel, isVisible, isTranslating }) => {
   const { t } = useLanguage();
+  const cachedImageUrl = useCachedImage(panel.imageUrl);
   const transitionClass = isVisible ? 'panel-enter-active' : 'panel-exit-active';
 
   return (
@@ -17,7 +19,7 @@ export const ComicPanel: React.FC<ComicPanelProps> = ({ panel, isVisible, isTran
       {/* Background Image with Ken Burns Effect */}
       <div
         className="absolute inset-0 w-full h-full bg-cover bg-center ken-burns"
-        style={{ backgroundImage: `url(${panel.imageUrl})` }}
+        style={{ backgroundImage: `url(${cachedImageUrl})` }}
         aria-hidden="true"
       ></div>
       {/* Gradient Overlay */}

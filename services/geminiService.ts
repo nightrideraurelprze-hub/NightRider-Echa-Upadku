@@ -24,9 +24,14 @@ const panelSchema = {
     soundscapePrompt: {
       type: Type.STRING,
       description: "A short prompt for a text generator to describe the atmospheric sounds of this specific panel in one sentence."
+    },
+    speakerGender: {
+        type: Type.STRING,
+        description: "Identify who is speaking or if it's narration. Options: 'narrator' for descriptive text, 'male' for male characters, 'female' for female characters, or 'machine' for non-human/synthetic voices.",
+        enum: ['narrator', 'male', 'female', 'machine']
     }
   },
-  required: ["text", "imagePrompt", "soundscapePrompt"]
+  required: ["text", "imagePrompt", "soundscapePrompt", "speakerGender"]
 };
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -80,7 +85,7 @@ async function withRetry<T>(fn: () => Promise<T>, maxRetries = 5, initialDelay =
 export const generateStoryPanels = (storyText: string): Promise<PanelPromptData[]> => withRetry(async () => {
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash',
-      contents: `Analyze the following post-apocalyptic story and break it down into a series of distinct, sequential comic book panels. For each panel, provide a short narrative text, a detailed image prompt, and a brief soundscape prompt. Ensure the panels logically follow the story's progression. Here is the story: ${storyText}`,
+      contents: `Analyze the following post-apocalyptic story and break it down into a series of distinct, sequential comic book panels. For each panel, provide a short narrative text, a detailed image prompt, a brief soundscape prompt, and identify the speaker's gender ('narrator', 'male', 'female', 'machine'). Ensure the panels logically follow the story's progression. Here is the story: ${storyText}`,
       config: {
         responseMimeType: "application/json",
         responseSchema: {
@@ -152,7 +157,7 @@ export const generateAtmosphericText = (prompt: string): Promise<string> => with
 export const translatePanels = (panels: PanelData[], targetLanguage: string): Promise<PanelData[]> => withRetry(async () => {
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash',
-      contents: `Translate the 'text' and 'soundscape' fields for each object in the following JSON array into ${targetLanguage}. Do not translate any other fields like 'imageUrl' or 'chapter'. Maintain the original JSON structure. Here is the data: ${JSON.stringify(panels)}`,
+      contents: `Translate the 'text' and 'soundscape' fields for each object in the following JSON array into ${targetLanguage}. Do not translate any other fields like 'imageUrl', 'chapter', or 'speakerGender'. Maintain the original JSON structure. Here is the data: ${JSON.stringify(panels)}`,
       config: {
         responseMimeType: "application/json",
         responseSchema: {
@@ -164,6 +169,7 @@ export const translatePanels = (panels: PanelData[], targetLanguage: string): Pr
               imageUrl: { type: Type.STRING },
               soundscape: { type: Type.STRING },
               chapter: { type: Type.NUMBER },
+              speakerGender: { type: Type.STRING },
             },
           },
         },

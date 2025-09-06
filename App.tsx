@@ -52,8 +52,19 @@ const App: React.FC = () => {
       return false;
     }
   });
-
+  
+  const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [currentTrack, setCurrentTrack] = useState<string | null>(null);
+  
+  useEffect(() => {
+    const loadVoices = () => {
+      setVoices(window.speechSynthesis.getVoices());
+    };
+    // Initial load
+    loadVoices();
+    // Update when voices change
+    window.speechSynthesis.onvoiceschanged = loadVoices;
+  }, []);
 
   useEffect(() => {
     const fetchAndCreateComic = async () => {
@@ -102,7 +113,13 @@ const App: React.FC = () => {
                   generatePostApocalypticImage(panel.imagePrompt),
                   generateAtmosphericText(panel.soundscapePrompt),
               ]);
-              chapterPanels.push({ text: panel.text, imageUrl, soundscape, chapter: i + 1 });
+              chapterPanels.push({ 
+                text: panel.text, 
+                imageUrl, 
+                soundscape, 
+                chapter: i + 1,
+                speakerGender: panel.speakerGender 
+              });
             }
 
             allPanels = [...allPanels, ...chapterPanels];
@@ -163,13 +180,33 @@ const App: React.FC = () => {
   useEffect(() => {
     window.speechSynthesis.cancel();
 
-    if (isTtsEnabled && displayedPanels.length > 0 && displayedPanels[currentPanelIndex]) {
+    if (isTtsEnabled && displayedPanels.length > 0 && displayedPanels[currentPanelIndex] && voices.length > 0) {
       const panel = displayedPanels[currentPanelIndex];
       const textToSpeak = `${panel.text}\n\n${panel.soundscape}`;
       
       const utterance = new SpeechSynthesisUtterance(textToSpeak);
-      utterance.lang = language === 'pl' ? 'pl-PL' : 'en-US';
+      const langCode = language === 'pl' ? 'pl-PL' : 'en-US';
+      utterance.lang = langCode;
+
+      // Voice selection logic
+      const langVoices = voices.filter(v => v.lang === langCode);
+      let selectedVoice: SpeechSynthesisVoice | null = null;
+
+      if (panel.speakerGender === 'male') {
+        selectedVoice = langVoices.find(v => v.name.toLowerCase().includes('male')) || langVoices.find(v => v.name.toLowerCase().includes('męski')) || null;
+      } else if (panel.speakerGender === 'female') {
+        selectedVoice = langVoices.find(v => v.name.toLowerCase().includes('female')) || langVoices.find(v => v.name.toLowerCase().includes('damski')) || langVoices.find(v => v.name.toLowerCase().includes('kobieta')) || null;
+      }
       
+      // Fallback to the first available voice for the language if a gendered one isn't found
+      utterance.voice = selectedVoice || langVoices[0] || voices.find(v => v.lang === langCode) || null;
+      
+      // For machine, we can alter the pitch and rate
+      if (panel.speakerGender === 'machine') {
+          utterance.pitch = 0.7;
+          utterance.rate = 0.9;
+      }
+
       const speakTimeout = setTimeout(() => {
         window.speechSynthesis.speak(utterance);
       }, 100);
@@ -179,7 +216,7 @@ const App: React.FC = () => {
         window.speechSynthesis.cancel();
       };
     }
-  }, [currentPanelIndex, isTtsEnabled, displayedPanels, language]);
+  }, [currentPanelIndex, isTtsEnabled, displayedPanels, language, voices]);
 
   useEffect(() => {
     if (isMusicEnabled && displayedPanels.length > 0 && displayedPanels[currentPanelIndex]) {

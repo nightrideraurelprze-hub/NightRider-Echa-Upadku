@@ -10,8 +10,8 @@ import { getTrackForSoundscape } from '../lib/audioTracks';
 import * as cacheService from '../services/cacheService';
 import { PROGRESS_CACHE_KEY } from '../constants';
 
-// FIX: Simplified USE_API to directly use the boolean value injected by Vite.
-const USE_API = process.env.USE_API;
+// Use Vite's standard way of accessing env variables. Defaults to true if not 'false'.
+const USE_API = import.meta.env.VITE_USE_API !== 'false';
 
 async function initializeStoryState(t: (key: string, replacements?: { [key: string]: string | number }) => string, setLoadingMessage: (msg: string) => void) {
     if (!USE_API) {
@@ -24,8 +24,8 @@ async function initializeStoryState(t: (key: string, replacements?: { [key: stri
     }
 
     const missingKeys = [];
-    if (!process.env.API_KEY) missingKeys.push('API_KEY (for Gemini)');
-    if (!process.env.ELEVENLABS_API_KEY) missingKeys.push('ELEVENLABS_API_KEY');
+    if (!import.meta.env.VITE_GEMINI_API_KEY) missingKeys.push('VITE_GEMINI_API_KEY');
+    if (!import.meta.env.VITE_ELEVENLABS_API_KEY) missingKeys.push('VITE_ELEVENLABS_API_KEY');
     if (missingKeys.length > 0) {
         const errorMsg = `Critical Error: Environment variable(s) for ${missingKeys.join(', ')} are missing.`;
         console.error(`[API Mode] ${errorMsg}`);

@@ -9,9 +9,9 @@ let elevenlabs: ElevenLabsClient | null = null;
 
 function getElevenLabsClient(): ElevenLabsClient {
     if (!elevenlabs) {
-        const apiKey = typeof process !== 'undefined' ? process.env.ELEVENLABS_API_KEY : undefined;
+        const apiKey = import.meta.env.VITE_ELEVENLABS_API_KEY;
         if (!apiKey) {
-            throw new Error("ElevenLabs API key is not configured. Please set the ELEVENLABS_API_KEY environment variable.");
+            throw new Error("ElevenLabs API key is not configured. Please set the VITE_ELEVENLABS_API_KEY environment variable.");
         }
         elevenlabs = new ElevenLabsClient({ apiKey });
     }

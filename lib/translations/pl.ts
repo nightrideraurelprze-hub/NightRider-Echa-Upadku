@@ -23,4 +23,7 @@ export const pl = {
   enableMusic: 'Włącz muzykę w tle',
   disableMusic: 'Wyłącz muzykę w tle',
   dailyQuotaError: 'Dzienny limit zapytań API został osiągnięty. Spróbuj ponownie jutro.',
+  errorBoundaryTitle: 'Wystąpił nieoczekiwany błąd',
+  errorBoundaryMessage: 'Napotkano nieoczekiwany błąd. Proszę odświeżyć stronę, aby kontynuować.',
+  refreshButton: 'Odśwież stronę',
 };

@@ -23,4 +23,7 @@ export const en = {
   enableMusic: 'Enable background music',
   disableMusic: 'Disable background music',
   dailyQuotaError: 'The daily API quota has been reached. Please try again tomorrow.',
+  errorBoundaryTitle: 'Something went wrong',
+  errorBoundaryMessage: 'An unexpected error occurred. Please refresh the page to continue.',
+  refreshButton: 'Refresh Page',
 };

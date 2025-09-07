@@ -6,6 +6,7 @@ import { Navigation } from './components/Navigation';
 import { AudioPlayer } from './components/AudioPlayer';
 import { useStoryManager } from './hooks/useStoryManager';
 import { NarrationPlayer } from './components/NarrationPlayer';
+import { ErrorBoundary } from './components/ErrorBoundary';
 
 const App: React.FC = () => {
   const {
@@ -43,7 +44,7 @@ const App: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen h-screen w-screen bg-black text-gray-300 font-sans flex flex-col" onClick={handleUserInteraction}>
+    <div className="min-h-screen h-screen w-screen bg-black text-gray-300 font-sans flex flex-col" onClick={handleUserInteraction} onKeyDown={actions.handleKeyDown} tabIndex={0}>
       <Header 
         totalChapters={totalChapters}
         currentChapter={currentChapter}
@@ -54,22 +55,24 @@ const App: React.FC = () => {
         onToggleMusic={handleToggleMusic}
         onUserInteraction={handleUserInteraction}
       />
-      <main className="flex-grow relative flex items-center justify-center">
-        {displayedPanels.length > 0 && (
-          <ComicPanel 
-            panel={displayedPanels[currentPanelIndex]} 
-            isVisible={true}
-            isTranslating={isTranslating}
-          />
-        )}
-      </main>
-      <Navigation
-        currentIndex={currentPanelIndex}
-        totalPanels={displayedPanels.length}
-        onNext={goToNextPanel}
-        onPrev={goToPrevPanel}
-        onUserInteraction={handleUserInteraction}
-      />
+      <ErrorBoundary>
+        <main className="flex-grow relative flex items-center justify-center">
+          {displayedPanels.length > 0 && (
+            <ComicPanel 
+              panel={displayedPanels[currentPanelIndex]} 
+              isVisible={true}
+              isTranslating={isTranslating}
+            />
+          )}
+        </main>
+        <Navigation
+          currentIndex={currentPanelIndex}
+          totalPanels={displayedPanels.length}
+          onNext={goToNextPanel}
+          onPrev={goToPrevPanel}
+          onUserInteraction={handleUserInteraction}
+        />
+      </ErrorBoundary>
       <AudioPlayer src={currentTrack} isPlaying={isMusicEnabled && isAudioUnlocked} />
       <NarrationPlayer blob={narrationAudioBlob} isPlaying={isTtsEnabled && isAudioUnlocked} />
     </div>

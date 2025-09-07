@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { generateStoryPanels, generateAtmosphericText, translatePanels } from '../services/geminiService';
 import * as ttsService from '../services/ttsService';
 import { STORY_CHAPTERS, STORY_CACHE_KEY } from '../lib/storyContent';
@@ -13,7 +13,7 @@ import { USE_API, GEMINI_API_KEY, ELEVENLABS_API_KEY } from '../config';
 export const useStoryManager = () => {
   const [sourcePanels, setSourcePanels] = useState<PanelData[]>([]);
   const [displayedPanels, setDisplayedPanels] = useState<PanelData[]>([]);
-  const [panelsCache, setPanelsCache] = useState<PanelsCache>({ pl: [] });
+  const [panelsCache, setPanelsCache] = useState<PanelsCache>({ pl: [], en: [] });
   const [currentPanelIndex, setCurrentPanelIndex] = useState<number>(() => {
     return parseInt(localStorage.getItem('nightrider-panel-index') || '0', 10);
   });
@@ -55,7 +55,6 @@ export const useStoryManager = () => {
         return;
       }
       
-      // Centralized API Key Check
       const missingKeys = [];
       if (!GEMINI_API_KEY) missingKeys.push('GEMINI_API_KEY');
       if (!ELEVENLABS_API_KEY) missingKeys.push('ELEVENLABS_API_KEY');
@@ -70,7 +69,7 @@ export const useStoryManager = () => {
         setLoadingMessage(t('loadingAssets'));
         setSourcePanels(cachedData);
         setPanelsCache({ pl: cachedData });
-        setDisplayedPanels(cachedData); // Initially show Polish
+        setDisplayedPanels(cachedData);
         setIsLoading(false);
         return;
       }
@@ -125,7 +124,7 @@ export const useStoryManager = () => {
   useEffect(() => {
     localStorage.setItem('nightrider-tts-enabled', String(isTtsEnabled));
     if (!isTtsEnabled) {
-      setNarrationAudioBlob(null); // Clear audio blob when disabled
+      setNarrationAudioBlob(null);
     }
   }, [isTtsEnabled]);
   
@@ -153,20 +152,14 @@ export const useStoryManager = () => {
         let audioBlob = cachedBlob;
 
         if (!audioBlob && USE_API) {
-          console.log(`Narration cache miss for key: ${narrationCacheKey}. Generating...`);
           audioBlob = await ttsService.generateSpeech(textToSpeak, currentPanel.speakerGender);
           await cacheService.cacheAudio(narrationCacheKey, audioBlob);
-        } else if (audioBlob) {
-          console.log(`Narration cache hit for key: ${narrationCacheKey}`);
         }
 
         if (isMounted && audioBlob && audioBlob.size > 0) {
            setNarrationAudioBlob(audioBlob);
         } else {
            if (isMounted) setNarrationAudioBlob(null);
-           if (audioBlob && audioBlob.size === 0) {
-             console.warn(`Received empty audio blob for key: ${narrationCacheKey}. Not playing.`);
-           }
         }
       } catch (error) {
         console.error("Failed to load narration:", error);
@@ -180,7 +173,7 @@ export const useStoryManager = () => {
 
     return () => {
       isMounted = false;
-      setNarrationAudioBlob(null); // Stop playback on navigate
+      setNarrationAudioBlob(null);
     };
   }, [currentPanelIndex, isTtsEnabled, displayedPanels, language]);
 
@@ -194,13 +187,13 @@ export const useStoryManager = () => {
   }, [currentPanelIndex, isMusicEnabled, displayedPanels]);
 
   useEffect(() => {
-    if (!sourcePanels.length || isLoading) return;
+    if (isLoading) return;
     const handleLanguageChange = async () => {
       if (panelsCache[language] && panelsCache[language].length > 0) {
         setDisplayedPanels(panelsCache[language]);
       } else { 
-        if (!USE_API) {
-          setDisplayedPanels(sourcePanels); // Fallback for preview mode
+        if (!USE_API) { // Preview mode fix
+          setDisplayedPanels(language === 'en' ? mockTranslatedPanelData : mockPanelData);
           return;
         }
         setIsTranslating(true);
@@ -210,7 +203,7 @@ export const useStoryManager = () => {
           setDisplayedPanels(translated);
         } catch (error) {
           console.error(`Failed to translate story to ${language}:`, error);
-          setDisplayedPanels(sourcePanels); // Fallback on error
+          setDisplayedPanels(sourcePanels);
         } finally {
           setIsTranslating(false);
         }
@@ -229,8 +222,7 @@ export const useStoryManager = () => {
     setCurrentPanelIndex(prevIndex => Math.max(prevIndex - 1, 0));
   }, [handleUserInteraction]);
   
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
+  const handleKeyDown = useCallback((event: React.KeyboardEvent<HTMLDivElement>) => {
       if (isLoading || isTranslating) return;
       handleUserInteraction();
       if (event.key === 'ArrowRight') {
@@ -238,11 +230,6 @@ export const useStoryManager = () => {
       } else if (event.key === 'ArrowLeft') {
         goToPrevPanel();
       }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-    };
   }, [goToNextPanel, goToPrevPanel, isLoading, isTranslating, handleUserInteraction]);
 
   const handleSelectChapter = useCallback((chapterNumber: number) => {
@@ -283,6 +270,7 @@ export const useStoryManager = () => {
       handleToggleTts,
       handleToggleMusic,
       handleUserInteraction,
+      handleKeyDown,
     }
   };
 };

@@ -11,12 +11,13 @@ This is an immersive, AI-powered visual and audio experience for the post-apocal
 - **Atmospheric Audio**: Dynamically selects background music based on the panel's atmosphere.
 - **Advanced Caching**: Caches all generated content (story text, images, and audio narration) in the browser, providing instant load times and full offline capability on subsequent visits.
 - **Multi-language Support**: Features a language switcher for English and Polish, with on-the-fly translation via the Gemini API.
+- **Error Boundary**: Gracefully handles unexpected application errors, preventing crashes and showing a user-friendly message.
 
 ## Configuration
 
 All configuration is managed in a single file for simplicity.
 
-1.  **Rename the example config file**:
+1.  **Create the config file**:
     Rename `config.example.ts` to `config.ts`.
 
 2.  **Add your API keys**:
@@ -25,13 +26,14 @@ All configuration is managed in a single file for simplicity.
     ```typescript
     // config.ts
     
-    // Switch between API generation and local mock data
+    // Switch to `false` to use local mock data for fast UI development without consuming API quota.
     export const USE_API = true; // Set to false for preview mode
     
     // --- API KEYS ---
     export const GEMINI_API_KEY = 'YOUR_GEMINI_API_KEY_HERE';
     export const ELEVENLABS_API_KEY = 'YOUR_ELEVENLABS_API_KEY_HERE';
     ```
+    **IMPORTANT**: This file contains sensitive keys. **DO NOT** commit it to a public repository.
 
 3.  **Toggle Preview Mode**:
     To work on the UI without consuming API credits, you can set `USE_API` to `false` in `config.ts`.

@@ -10,7 +10,8 @@ import { getTrackForSoundscape } from '../lib/audioTracks';
 import * as cacheService from '../services/cacheService';
 import { PROGRESS_CACHE_KEY } from '../constants';
 
-const USE_API = typeof process !== 'undefined' && typeof process.env !== 'undefined' && process.env.USE_API !== 'false';
+// FIX: Simplified USE_API to directly use the boolean value injected by Vite.
+const USE_API = process.env.USE_API;
 
 async function initializeStoryState(t: (key: string, replacements?: { [key: string]: string | number }) => string, setLoadingMessage: (msg: string) => void) {
     if (!USE_API) {

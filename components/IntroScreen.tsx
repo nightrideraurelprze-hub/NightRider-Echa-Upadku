@@ -37,6 +37,13 @@ export const IntroScreen: React.FC<IntroScreenProps> = ({ onStart }) => {
           {t('startButton')}
         </button>
       </div>
+
+      {/* Copyright Notice */}
+      <div className="absolute bottom-4 left-0 right-0 z-10">
+        <p className="text-center text-xs text-gray-500 font-sans">
+          © {new Date().getFullYear()} Aureliusz Przednowek. All Rights Reserved.
+        </p>
+      </div>
     </div>
   );
 };

@@ -15,30 +15,40 @@ This is an immersive, AI-powered visual and audio experience for the post-apocal
 
 ## Configuration
 
-This application requires API keys for Google Gemini and ElevenLabs to function in "live" mode. These keys should be configured as environment variables, which is a secure best practice.
+This application uses [Vite](https://vitejs.dev/) to handle environment variables. For both local development and deployment, you need to configure the following variables.
 
-### Environment Variables
+### Environment Variables for Deployment (e.g., Vercel)
 
-You need to configure the following environment variables in your deployment environment (e.g., Vercel, Netlify, or your local shell):
+Set these in your hosting provider's dashboard:
 
--   `API_KEY`: Your Google Gemini API key. You can get one from [Google AI Studio](https://aistudio.google.com/app/apikey).
--   `ELEVENLABS_API_KEY`: Your ElevenLabs API key. You can find it in your [ElevenLabs profile](https://elevenlabs.io/app/settings/api-keys).
--   `USE_API`: (Optional) Set this to `false` to run the application in "preview" mode. This uses local mock data instead of making live API calls, which is useful for UI development without consuming your API quota. If not set, it defaults to `true` (live mode).
+-   `VITE_GEMINI_API_KEY`: Your Google Gemini API key. Get one from [Google AI Studio](https://aistudio.google.com/app/apikey).
+-   `VITE_ELEVENLABS_API_KEY`: Your ElevenLabs API key. Find it in your [ElevenLabs profile](https://elevenlabs.io/app/settings/api-keys).
+-   `VITE_USE_API`: (Optional) Set to `"false"` to force the deployed application into "preview" mode. Defaults to `"true"` (live mode).
 
-**IMPORTANT**: Since this is a client-side application, your build/hosting environment must make these variables available to the browser. Most modern frontend frameworks and hosting platforms (like Vercel) handle this automatically.
+### For Local Development
+
+1.  Copy the `.env.example` file to a new file named `.env` in the project root.
+2.  Open the `.env` file and fill in your actual API keys.
+
+The Vite development server will automatically load these variables.
 
 ## Running the Application
 
-This project is a static web application and does not require a complex build process. You can run it with any simple static file server.
+This project is now set up to run with Vite, which provides a fast development server and an optimized build process.
 
-1.  **Using VS Code's Live Server**:
-    If you use Visual Studio Code, you can install the "Live Server" extension. Once installed, right-click on `index.html` and choose "Open with Live Server".
-
-2.  **Using Python's HTTP Server**:
-    If you have Python installed, navigate to the project's root directory in your terminal and run:
+1.  **Install dependencies**:
     ```bash
-    python -m http.server
+    npm install
     ```
-    Then, open your browser and go to `http://localhost:8000`.
 
-**Note for Local Development**: To make environment variables work locally with a simple static server, you will need a build tool (like Vite) that can substitute `process.env.*` placeholders. The current setup assumes the deployment environment handles this.
+2.  **Run the development server**:
+    ```bash
+    npm run dev
+    ```
+    This will start a local server, typically at `http://localhost:5173`. The server features hot-reloading, so changes to your code will be reflected instantly in the browser.
+
+3.  **Build for production**:
+    ```bash
+    npm run build
+    ```
+    This command bundles the application into a `dist` directory, optimized for deployment.

@@ -1,41 +1,41 @@
 import { useState, useEffect, useCallback } from 'react';
 import { generateStoryPanels, generateAtmosphericText, translatePanels, generateImage } from '../services/geminiService';
 import * as ttsService from '../services/ttsService';
-import { STORY_CHAPTERS, STORY_CACHE_KEY } from '../lib/storyContent';
-import type { PanelData, PanelsCache } from '../types';
+import { STORY_CHAPTERS } from '../lib/storyContent';
+import type { PanelData, PanelsCache, SavedProgress } from '../types';
 import { useLanguage } from './useLanguage';
 import { getImageUrlForPanel } from '../lib/imageMapping';
 import { mockPanelData, mockTranslatedPanelData } from '../lib/mockPanelData';
 import { getTrackForSoundscape } from '../lib/audioTracks';
 import * as cacheService from '../services/cacheService';
+import { PROGRESS_CACHE_KEY, STORY_CACHE_KEY } from '../constants';
 
 // Gracefully handle environments where process.env is not defined (like local static servers).
 // Default to preview mode (USE_API = false) in such cases to prevent app crashes.
 const USE_API = typeof process !== 'undefined' && typeof process.env !== 'undefined' && process.env.USE_API !== 'false';
 
 export const useStoryManager = () => {
+  // Load initial state from consolidated progress cache
+  const savedProgress = cacheService.getProgressFromCache(PROGRESS_CACHE_KEY);
+
   const [sourcePanels, setSourcePanels] = useState<PanelData[]>([]);
   const [displayedPanels, setDisplayedPanels] = useState<PanelData[]>([]);
   const [panelsCache, setPanelsCache] = useState<PanelsCache>({ pl: [], en: [] });
-  const [currentPanelIndex, setCurrentPanelIndex] = useState<number>(() => {
-    return parseInt(localStorage.getItem('nightrider-panel-index') || '0', 10);
-  });
+  const [currentPanelIndex, setCurrentPanelIndex] = useState<number>(savedProgress?.currentPanelIndex || 0);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isTranslating, setIsTranslating] = useState<boolean>(false);
   const [loadingMessage, setLoadingMessage] = useState<string>('');
   const { t, language, languageName } = useLanguage();
   
-  const [isTtsEnabled, setIsTtsEnabled] = useState<boolean>(() => localStorage.getItem('nightrider-tts-enabled') === 'true');
-  const [isMusicEnabled, setIsMusicEnabled] = useState<boolean>(() => localStorage.getItem('nightrider-music-enabled') === 'true');
+  const [isTtsEnabled, setIsTtsEnabled] = useState<boolean>(savedProgress?.isTtsEnabled ?? false);
+  const [isMusicEnabled, setIsMusicEnabled] = useState<boolean>(savedProgress?.isMusicEnabled ?? false);
   
   const [narrationAudioBlob, setNarrationAudioBlob] = useState<Blob | null>(null);
   const [isNarrationLoading, setIsNarrationLoading] = useState<boolean>(false);
   const [currentTrack, setCurrentTrack] = useState<string | null>(null);
 
   const [isAudioUnlocked, setIsAudioUnlocked] = useState(false);
-  const [hasStartedStory, setHasStartedStory] = useState<boolean>(() => {
-    return localStorage.getItem('nightrider-has-started') === 'true';
-  });
+  const [hasStartedStory, setHasStartedStory] = useState<boolean>(savedProgress?.hasStartedStory || false);
 
   const handleUserInteraction = useCallback(() => {
     if (!isAudioUnlocked) {
@@ -47,8 +47,22 @@ export const useStoryManager = () => {
   const startStory = useCallback(() => {
     handleUserInteraction();
     setHasStartedStory(true);
-    localStorage.setItem('nightrider-has-started', 'true');
   }, [handleUserInteraction]);
+
+  // Consolidated save effect for user progress
+  useEffect(() => {
+    // Don't save initial default state until loading is complete and user has started
+    if (isLoading || !hasStartedStory) return;
+
+    const progress: SavedProgress = {
+      version: '1.0',
+      currentPanelIndex,
+      isTtsEnabled,
+      isMusicEnabled,
+      hasStartedStory,
+    };
+    cacheService.saveProgressToCache(PROGRESS_CACHE_KEY, progress);
+  }, [currentPanelIndex, isTtsEnabled, isMusicEnabled, hasStartedStory, isLoading]);
 
 
   useEffect(() => {
@@ -155,21 +169,10 @@ export const useStoryManager = () => {
   }, [hasStartedStory]);
 
   useEffect(() => {
-    if (!isLoading && hasStartedStory) {
-      localStorage.setItem('nightrider-panel-index', String(currentPanelIndex));
-    }
-  }, [currentPanelIndex, isLoading, hasStartedStory]);
-
-  useEffect(() => {
-    localStorage.setItem('nightrider-tts-enabled', String(isTtsEnabled));
     if (!isTtsEnabled) {
       setNarrationAudioBlob(null);
     }
   }, [isTtsEnabled]);
-  
-  useEffect(() => {
-    localStorage.setItem('nightrider-music-enabled', String(isMusicEnabled));
-  }, [isMusicEnabled]);
   
   useEffect(() => {
     if (!isTtsEnabled || displayedPanels.length === 0 || !hasStartedStory) {

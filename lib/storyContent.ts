@@ -1,6 +1,3 @@
-import { CACHE_VERSION } from '../constants';
-export const STORY_CACHE_KEY = `nightrider-story-cache-v${CACHE_VERSION}`;
-
 export const STORY_CHAPTERS = [
 // Rozdział 1
 `Rozdział 1: Świat po wojnie

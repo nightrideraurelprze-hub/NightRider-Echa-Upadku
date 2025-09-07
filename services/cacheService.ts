@@ -1,4 +1,4 @@
-import type { PanelData } from '../types';
+import type { PanelData, SavedProgress } from '../types';
 
 const IMAGE_CACHE_NAME = 'nightrider-image-cache-v1';
 const AUDIO_CACHE_NAME = 'nightrider-audio-cache-v1.1';
@@ -26,6 +26,34 @@ export const saveStoryToCache = async (cacheKey: string, panels: PanelData[]): P
         localStorage.setItem(cacheKey, dataString);
     } catch (error) {
         console.error("Failed to save story to localStorage.", error);
+    }
+};
+
+export const getProgressFromCache = (cacheKey: string): SavedProgress | null => {
+    try {
+        const cachedData = localStorage.getItem(cacheKey);
+        if (cachedData) {
+            console.log("Loading user progress from localStorage...");
+            const progress = JSON.parse(cachedData) as SavedProgress;
+            // Add version check for future migrations
+            if (progress.version === '1.0') {
+                return progress;
+            }
+        }
+    } catch (error) {
+        console.error("Failed to load progress from localStorage.", error);
+        localStorage.removeItem(cacheKey); // Clear corrupted data
+    }
+    return null;
+};
+
+export const saveProgressToCache = (cacheKey: string, progress: SavedProgress): void => {
+    try {
+        const dataString = JSON.stringify(progress);
+        localStorage.setItem(cacheKey, dataString);
+    } catch (error)
+        {
+        console.error("Failed to save progress to localStorage.", error);
     }
 };
 

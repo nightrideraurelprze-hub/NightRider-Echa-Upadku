@@ -1,6 +1,3 @@
-
-
-
 export interface PanelPromptData {
   text: string;
   imagePrompt: string;
@@ -19,3 +16,11 @@ export interface PanelData {
 export type PanelsCache = {
   [key: string]: PanelData[];
 };
+
+export interface SavedProgress {
+  version: string;
+  currentPanelIndex: number;
+  isTtsEnabled: boolean;
+  isMusicEnabled: boolean;
+  hasStartedStory: boolean;
+}

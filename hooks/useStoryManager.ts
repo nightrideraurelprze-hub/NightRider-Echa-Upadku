@@ -8,7 +8,10 @@ import { getImageUrlForPanel } from '../lib/imageMapping';
 import { mockPanelData, mockTranslatedPanelData } from '../lib/mockPanelData';
 import { getTrackForSoundscape } from '../lib/audioTracks';
 import * as cacheService from '../services/cacheService';
-import { USE_API, GEMINI_API_KEY, ELEVENLABS_API_KEY } from '../config';
+
+// Use environment variable to determine if API calls should be made.
+// Defaults to true (live mode) if not set or not 'false'.
+const USE_API = process.env.USE_API !== 'false';
 
 export const useStoryManager = () => {
   const [sourcePanels, setSourcePanels] = useState<PanelData[]>([]);
@@ -56,11 +59,12 @@ export const useStoryManager = () => {
       }
       
       const missingKeys = [];
-      if (!GEMINI_API_KEY) missingKeys.push('GEMINI_API_KEY');
-      if (!ELEVENLABS_API_KEY) missingKeys.push('ELEVENLABS_API_KEY');
+      if (!process.env.API_KEY) missingKeys.push('API_KEY (for Gemini)');
+      if (!process.env.ELEVENLABS_API_KEY) missingKeys.push('ELEVENLABS_API_KEY');
       if (missingKeys.length > 0) {
-        console.error(`[API Mode] The following API keys are not set in config.ts: ${missingKeys.join(', ')}. The application cannot function correctly.`);
-        setLoadingMessage(`Critical Error: API Key(s) for ${missingKeys.join(', ')} are missing.`);
+        const errorMsg = `Critical Error: Environment variable(s) for ${missingKeys.join(', ')} are missing.`;
+        console.error(`[API Mode] ${errorMsg}`);
+        setLoadingMessage(errorMsg);
         return;
       }
 

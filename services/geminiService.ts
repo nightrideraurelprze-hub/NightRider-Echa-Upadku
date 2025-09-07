@@ -1,8 +1,7 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import type { PanelPromptData, PanelData } from '../types';
-import { GEMINI_API_KEY } from '../config';
 
-const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
+const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 const panelSchema = {
   type: Type.OBJECT,
@@ -77,8 +76,8 @@ async function withRetry<T>(fn: () => Promise<T>, maxRetries = 5, initialDelay =
  * @returns A promise that resolves to an array of panel prompt data.
  */
 export const generateStoryPanels = (storyText: string): Promise<PanelPromptData[]> => withRetry(async () => {
-    if (!GEMINI_API_KEY) {
-      throw new Error("Gemini API key is not configured.");
+    if (!process.env.API_KEY) {
+      throw new Error("Gemini API key is not configured. Please set the API_KEY environment variable.");
     }
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash',
@@ -111,8 +110,8 @@ export const generateStoryPanels = (storyText: string): Promise<PanelPromptData[
  * @returns A promise that resolves to the generated text.
  */
 export const generateAtmosphericText = (prompt: string): Promise<string> => withRetry(async () => {
-    if (!GEMINI_API_KEY) {
-      throw new Error("Gemini API key is not configured.");
+    if (!process.env.API_KEY) {
+      throw new Error("Gemini API key is not configured. Please set the API_KEY environment variable.");
     }
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash',
@@ -128,8 +127,8 @@ export const generateAtmosphericText = (prompt: string): Promise<string> => with
  * @returns A promise that resolves to an array of translated panel data.
  */
 export const translatePanels = (panels: PanelData[], targetLanguage: string): Promise<PanelData[]> => withRetry(async () => {
-    if (!GEMINI_API_KEY) {
-      throw new Error("Gemini API key is not configured.");
+    if (!process.env.API_KEY) {
+      throw new Error("Gemini API key is not configured. Please set the API_KEY environment variable.");
     }
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash',

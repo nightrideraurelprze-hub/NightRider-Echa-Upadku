@@ -1,15 +1,14 @@
 import { ElevenLabsClient } from '@elevenlabs/elevenlabs-js';
 import { PanelData } from '../types';
-import { ELEVENLABS_API_KEY } from '../config';
 
 const MALE_VOICE_ID = 'pNInz6obpgU5sV9ADbT4'; // Adam (Multi-language)
 const FEMALE_VOICE_ID = '21m00Tcm4TlvDq8ikWAM'; // Rachel (Multi-language)
 const MACHINE_VOICE_ID = 'JBFqnCBsd6RMkjVDRZzb'; // Optional: A more robotic voice
 
 let elevenlabs: ElevenLabsClient | null = null;
-if (ELEVENLABS_API_KEY) {
+if (process.env.ELEVENLABS_API_KEY) {
     elevenlabs = new ElevenLabsClient({
-        apiKey: ELEVENLABS_API_KEY,
+        apiKey: process.env.ELEVENLABS_API_KEY,
     });
 }
 
@@ -21,7 +20,7 @@ if (ELEVENLABS_API_KEY) {
  */
 export const generateSpeech = async (text: string, speakerGender: PanelData['speakerGender']): Promise<Blob> => {
     if (!elevenlabs) {
-        throw new Error("ElevenLabs API key is not configured in config.ts.");
+        throw new Error("ElevenLabs API key is not configured. Please set the ELEVENLABS_API_KEY environment variable.");
     }
 
     let voiceId: string;

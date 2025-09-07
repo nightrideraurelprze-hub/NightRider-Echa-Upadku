@@ -15,28 +15,17 @@ This is an immersive, AI-powered visual and audio experience for the post-apocal
 
 ## Configuration
 
-All configuration is managed in a single file for simplicity.
+This application requires API keys for Google Gemini and ElevenLabs to function in "live" mode. These keys should be configured as environment variables, which is a secure best practice.
 
-1.  **Create the config file**:
-    Rename `config.example.ts` to `config.ts`.
+### Environment Variables
 
-2.  **Add your API keys**:
-    Open `config.ts` and paste your API keys into the respective fields.
+You need to configure the following environment variables in your deployment environment (e.g., Vercel, Netlify, or your local shell):
 
-    ```typescript
-    // config.ts
-    
-    // Switch to `false` to use local mock data for fast UI development without consuming API quota.
-    export const USE_API = true; // Set to false for preview mode
-    
-    // --- API KEYS ---
-    export const GEMINI_API_KEY = 'YOUR_GEMINI_API_KEY_HERE';
-    export const ELEVENLABS_API_KEY = 'YOUR_ELEVENLABS_API_KEY_HERE';
-    ```
-    **IMPORTANT**: This file contains sensitive keys. **DO NOT** commit it to a public repository.
+-   `API_KEY`: Your Google Gemini API key. You can get one from [Google AI Studio](https://aistudio.google.com/app/apikey).
+-   `ELEVENLABS_API_KEY`: Your ElevenLabs API key. You can find it in your [ElevenLabs profile](https://elevenlabs.io/app/settings/api-keys).
+-   `USE_API`: (Optional) Set this to `false` to run the application in "preview" mode. This uses local mock data instead of making live API calls, which is useful for UI development without consuming your API quota. If not set, it defaults to `true` (live mode).
 
-3.  **Toggle Preview Mode**:
-    To work on the UI without consuming API credits, you can set `USE_API` to `false` in `config.ts`.
+**IMPORTANT**: Since this is a client-side application, your build/hosting environment must make these variables available to the browser. Most modern frontend frameworks and hosting platforms (like Vercel) handle this automatically.
 
 ## Running the Application
 
@@ -51,3 +40,5 @@ This project is a static web application and does not require a complex build pr
     python -m http.server
     ```
     Then, open your browser and go to `http://localhost:8000`.
+
+**Note for Local Development**: To make environment variables work locally with a simple static server, you will need a build tool (like Vite) that can substitute `process.env.*` placeholders. The current setup assumes the deployment environment handles this.

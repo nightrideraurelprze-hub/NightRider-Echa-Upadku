@@ -41,7 +41,6 @@ export const Header: React.FC<HeaderProps> = ({
             onUserInteraction={onUserInteraction}
           />
           <MusicToggleButton isEnabled={isMusicEnabled} onToggle={onToggleMusic} onUserInteraction={onUserInteraction} />
-          {/* FIX: Corrected prop name from isEnabled to isTtsEnabled, which is available in HeaderProps. */}
           <AudioToggleButton isEnabled={isTtsEnabled} onToggle={onToggleTts} onUserInteraction={onUserInteraction} />
           <LanguageSwitcher onUserInteraction={onUserInteraction} />
         </div>

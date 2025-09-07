@@ -5,6 +5,7 @@ import { useCachedImage } from '../hooks/useCachedImage';
 interface ComicPanelProps {
   panel: PanelData;
   isVisible: boolean;
+  isTtsEnabled: boolean;
 }
 
 // --- Atmospheric Effects Components ---
@@ -87,13 +88,21 @@ const AtmosphericEffects: React.FC<{ soundscape: string }> = ({ soundscape }) =>
 };
 
 
-export const ComicPanel: React.FC<ComicPanelProps> = ({ panel, isVisible }) => {
+export const ComicPanel: React.FC<ComicPanelProps> = ({ panel, isVisible, isTtsEnabled }) => {
   const cachedImageUrl = useCachedImage(panel.imageUrl);
   const transitionClass = isVisible ? 'panel-enter-active' : 'panel-exit-active';
 
   const lowerSoundscape = panel.soundscape.toLowerCase();
   const hasRumble = lowerSoundscape.includes('engine') || lowerSoundscape.includes('silnik') || lowerSoundscape.includes('rumble') || lowerSoundscape.includes('pomruk');
   const panelAnimationClass = hasRumble ? 'subtle-screen-shake' : '';
+
+  const wordCount = panel.text.split(' ').length;
+  const readingSpeedWps = 2.5; // Words per second (approx. 150 wpm)
+  const duration = Math.max(wordCount / readingSpeedWps, 3); // Minimum 3s duration
+
+  const animationStyle = {
+    animationDuration: `${duration}s`,
+  };
 
   return (
     <div className={`absolute inset-0 w-full h-full transition-opacity duration-700 ${transitionClass} ${panelAnimationClass}`}>
@@ -113,10 +122,22 @@ export const ComicPanel: React.FC<ComicPanelProps> = ({ panel, isVisible }) => {
       {/* Content Container */}
       <div className="relative w-full h-full flex flex-col justify-end items-center pb-24 md:pb-32 px-4">
         {/* Main Text Box */}
-        <div className="w-full max-w-3xl text-container-bg rounded-lg p-4 md:p-6 mb-4 animate-fade-in">
-          <p className="text-gray-200 text-lg md:text-xl leading-relaxed text-center font-sans">
-            {panel.text}
-          </p>
+        <div className="w-full max-w-3xl text-container-bg rounded-lg p-4 md:p-6 mb-4 animate-fade-in bg-[#111111]">
+          {isTtsEnabled ? (
+            <div className="text-scroll-container">
+              <p
+                key={panel.text} // Re-mount component on text change to restart animation
+                className="text-gray-200 text-lg md:text-xl leading-relaxed text-center font-sans scrolling-text"
+                style={animationStyle}
+              >
+                {panel.text}
+              </p>
+            </div>
+          ) : (
+             <p className="text-gray-200 text-lg md:text-xl leading-relaxed text-center font-sans max-h-52 overflow-y-auto">
+              {panel.text}
+            </p>
+          )}
         </div>
       </div>
       

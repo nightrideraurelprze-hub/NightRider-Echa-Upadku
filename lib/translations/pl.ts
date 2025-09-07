@@ -17,7 +17,7 @@ export const pl = {
   languageName: 'Polish',
   translatingStory: 'Tłumaczenie historii...',
   generatingChapter: 'Generowanie rozdziału {{current}} z {{total}}...',
-  generatingImagesForChapter: 'Generowanie obrazu {{current}} z {{total}} dla rozdziału {{chapter}}...',
+  generatingKeyVisuals: 'Generowanie kluczowych wizualizacji dla rozdziału {{chapter}}...',
   enableNarration: 'Włącz narrację audio',
   disableNarration: 'Wyłącz narrację audio',
   enableMusic: 'Włącz muzykę w tle',

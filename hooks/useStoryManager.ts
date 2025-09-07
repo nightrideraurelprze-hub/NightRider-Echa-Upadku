@@ -38,26 +38,55 @@ async function initializeStoryState(t: (key: string, replacements?: { [key: stri
         setLoadingMessage(t('generatingChapter', { current: i + 1, total: totalChapters }));
         const panelPrompts = await generateStoryPanels(chapterText);
 
-        const chapterPanels: PanelData[] = [];
-        for (let j = 0; j < panelPrompts.length; j++) {
-            const panel = panelPrompts[j];
-            let imageUrl = getImageUrlForPanel(i + 1, panel.imagePrompt);
+        // 1. Select up to 3 key image prompts for the chapter
+        const uniqueImagePrompts = [...new Set(panelPrompts.map(p => p.imagePrompt))];
+        let keyImagePrompts: string[];
+        if (uniqueImagePrompts.length <= 3) {
+            keyImagePrompts = uniqueImagePrompts;
+        } else {
+            const middleIndex = Math.floor(uniqueImagePrompts.length / 2);
+            keyImagePrompts = [
+                uniqueImagePrompts[0],
+                uniqueImagePrompts[middleIndex],
+                uniqueImagePrompts[uniqueImagePrompts.length - 1]
+            ].filter(Boolean); // Filter out potential undefined if array is small
+        }
 
+        // 2. Generate or fetch URLs for these key prompts
+        const chapterImageMap = new Map<string, string>();
+        setLoadingMessage(t('generatingKeyVisuals', { chapter: i + 1 }));
+        for (const prompt of keyImagePrompts) {
+            let imageUrl = getImageUrlForPanel(i + 1, prompt);
             if (imageUrl) {
                 await cacheService.cacheImage(imageUrl);
             } else {
-                setLoadingMessage(t('generatingImagesForChapter', { current: j + 1, total: panelPrompts.length, chapter: i + 1 }));
                 try {
-                    imageUrl = await generateImage(panel.imagePrompt);
+                    imageUrl = await generateImage(prompt);
                 } catch (imageError) {
-                    console.error(`Failed to generate image for prompt: "${panel.imagePrompt}". Falling back to placeholder.`, imageError);
+                    console.error(`Failed to generate image for prompt: "${prompt}". Falling back to placeholder.`, imageError);
                     const getPlaceholderImageUrl = (text: string) => {
                         const encodedText = encodeURIComponent(`Image Generation Failed\n${text}`);
                         return `https://placehold.co/1920x1080/000000/FFBF00/png?text=${encodedText}`;
                     };
-                    imageUrl = getPlaceholderImageUrl(panel.imagePrompt);
+                    imageUrl = getPlaceholderImageUrl(prompt);
                 }
             }
+            if (imageUrl) {
+                chapterImageMap.set(prompt, imageUrl);
+            }
+        }
+
+        const chapterKeyImages = Array.from(chapterImageMap.values());
+        if(chapterKeyImages.length === 0) {
+            // Add a default placeholder if no images could be generated/found
+            chapterKeyImages.push(`https://placehold.co/1920x1080/000000/FFBF00/png?text=No+Image+Available`);
+        }
+        
+        // 3. Create chapter panels, assigning one of the key images to each panel
+        const chapterPanels: PanelData[] = [];
+        for (let j = 0; j < panelPrompts.length; j++) {
+            const panel = panelPrompts[j];
+            const imageUrl = chapterKeyImages[j % chapterKeyImages.length];
             const soundscape = await generateAtmosphericText(panel.soundscapePrompt);
             chapterPanels.push({
                 text: panel.text,
@@ -80,7 +109,13 @@ export const useStoryManager = () => {
   const savedProgress = cacheService.getProgressFromCache(PROGRESS_CACHE_KEY);
 
   const [sourcePanels, setSourcePanels] = useState<PanelData[]>(savedProgress?.sourcePanels || []);
-  const [displayedPanels, setDisplayedPanels] = useState<PanelData[]>([]);
+  const [displayedPanels, setDisplayedPanels] = useState<PanelData[]>(() => {
+    if (savedProgress) {
+      const savedLanguage = (localStorage.getItem('nightrider-language') || 'pl') as 'pl' | 'en';
+      return savedProgress.panelsCache[savedLanguage] || savedProgress.sourcePanels || [];
+    }
+    return [];
+  });
   const [panelsCache, setPanelsCache] = useState<PanelsCache>(savedProgress?.panelsCache || { pl: [], en: [] });
   const [currentPanelIndex, setCurrentPanelIndex] = useState<number>(savedProgress?.currentPanelIndex || 0);
   const [isLoading, setIsLoading] = useState<boolean>(!savedProgress);
@@ -207,9 +242,6 @@ export const useStoryManager = () => {
 
   useEffect(() => {
     if (isLoading || !hasStartedStory) {
-        if (savedProgress) {
-            setDisplayedPanels(savedProgress.panelsCache[language] || savedProgress.sourcePanels);
-        }
         return;
     };
     
@@ -237,7 +269,7 @@ export const useStoryManager = () => {
       }
     };
     handleLanguageChange();
-  }, [language, languageName, sourcePanels, panelsCache, isLoading, hasStartedStory, savedProgress]);
+  }, [language, languageName, sourcePanels, panelsCache, isLoading, hasStartedStory]);
   
   const goToNextPanel = useCallback(() => {
     handleUserInteraction();

@@ -38,6 +38,27 @@
         transition: opacity 700ms ease-in-out;
       }
 
+      /* --- Text Scrolling Effect --- */
+      .text-scroll-container {
+        height: 84px; /* Approx 3 lines of text with line-height */
+        overflow: hidden;
+        position: relative;
+      }
+      .text-scroll-container::after {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 2rem;
+        background: linear-gradient(to top, rgba(17, 17, 17, 1), rgba(17, 17, 17, 0));
+      }
+      .scrolling-text {
+        animation-name: scroll-text;
+        animation-timing-function: linear;
+        animation-fill-mode: forwards;
+      }
+
       /* --- Atmospheric Effects --- */
       .atmospheric-overlay {
         position: absolute;
@@ -84,6 +105,15 @@
       }
       .subtle-screen-shake {
         animation: screen-shake 5s cubic-bezier(.36,.07,.19,.97) infinite;
+      }
+
+      @keyframes scroll-text {
+        from {
+          transform: translateY(0%);
+        }
+        to {
+          transform: translateY(calc(-100% + 84px)); /* Match container height */
+        }
       }
 
       @keyframes ken-burns {

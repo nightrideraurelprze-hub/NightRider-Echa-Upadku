@@ -75,6 +75,7 @@ const App: React.FC = () => {
                 <ComicPanel 
                   panel={displayedPanels[currentPanelIndex]} 
                   isVisible={true}
+                  isTtsEnabled={isTtsEnabled}
                 />
               )}
               {isTranslating && (

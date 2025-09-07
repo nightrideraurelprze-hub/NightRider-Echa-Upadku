@@ -5,30 +5,6 @@ const AUDIO_CACHE_NAME = 'nightrider-audio-cache-v1.1';
 
 // --- Local Storage Cache for Story Data ---
 
-export const getStoryFromCache = async (cacheKey: string): Promise<PanelData[] | null> => {
-    try {
-        const cachedData = localStorage.getItem(cacheKey);
-        if (cachedData) {
-            console.log("Loading story from localStorage...");
-            return JSON.parse(cachedData);
-        }
-    } catch (error) {
-        console.error("Failed to load story from localStorage.", error);
-        localStorage.removeItem(cacheKey); // Clear corrupted data
-    }
-    return null;
-};
-
-export const saveStoryToCache = async (cacheKey: string, panels: PanelData[]): Promise<void> => {
-    try {
-        console.log("Saving generated story to localStorage...");
-        const dataString = JSON.stringify(panels);
-        localStorage.setItem(cacheKey, dataString);
-    } catch (error) {
-        console.error("Failed to save story to localStorage.", error);
-    }
-};
-
 export const getProgressFromCache = (cacheKey: string): SavedProgress | null => {
     try {
         const cachedData = localStorage.getItem(cacheKey);

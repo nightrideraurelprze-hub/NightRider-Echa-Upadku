@@ -26,4 +26,7 @@ export const en = {
   errorBoundaryTitle: 'Something went wrong',
   errorBoundaryMessage: 'An unexpected error occurred. Please refresh the page to continue.',
   refreshButton: 'Refresh Page',
+  introTitle: 'NightRider: Echoes of the Fall',
+  introDescription: 'An immersive, AI-powered visual and audio experience. Step into a post-apocalyptic world and uncover the echoes of the past.',
+  startButton: 'START STORY',
 };

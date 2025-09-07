@@ -26,4 +26,7 @@ export const pl = {
   errorBoundaryTitle: 'Wystąpił nieoczekiwany błąd',
   errorBoundaryMessage: 'Napotkano nieoczekiwany błąd. Proszę odświeżyć stronę, aby kontynuować.',
   refreshButton: 'Odśwież stronę',
+  introTitle: 'NightRider: Echa Upadku',
+  introDescription: 'Wciągające, napędzane przez AI doświadczenie wizualne i dźwiękowe. Wejdź do postapokaliptycznego świata i odkryj echa przeszłości.',
+  startButton: 'ROZPOCZNIJ HISTORIĘ',
 };

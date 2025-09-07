@@ -38,6 +38,54 @@
         transition: opacity 700ms ease-in-out;
       }
 
+      /* --- Atmospheric Effects --- */
+      .atmospheric-overlay {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+        overflow: hidden;
+        z-index: 1;
+      }
+      .raindrop {
+        position: absolute;
+        bottom: 100%;
+        width: 1px;
+        height: 50px;
+        background: linear-gradient(to top, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.2) 100%);
+        animation: rain-fall 1s linear infinite;
+      }
+      .dust-particle {
+        position: absolute;
+        width: 4px;
+        height: 4px;
+        background-color: rgba(251, 191, 36, 0.1);
+        border-radius: 50%;
+        animation: dust-drift 10s linear infinite;
+        opacity: 0;
+      }
+      .spark {
+        position: absolute;
+        width: 3px;
+        height: 3px;
+        background-color: #ffbf00;
+        border-radius: 50%;
+        box-shadow: 0 0 5px #ffbf00, 0 0 10px #ffbf00;
+        animation: sparks-fly 0.5s ease-out forwards;
+        opacity: 0;
+      }
+      .battle-flash {
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(circle at var(--x) var(--y), rgba(255, 165, 0, 0.2) 0%, rgba(255, 165, 0, 0) 40%);
+        animation: battle-flash-anim 3s ease-in-out infinite;
+        opacity: 0;
+      }
+      .subtle-screen-shake {
+        animation: screen-shake 5s cubic-bezier(.36,.07,.19,.97) infinite;
+      }
+
       @keyframes ken-burns {
         0% {
           transform: scale(1) translate(0, 0);
@@ -48,6 +96,52 @@
         100% {
           transform: scale(1) translate(0, 0);
         }
+      }
+
+      @keyframes rain-fall {
+        from { transform: translateY(0); }
+        to { transform: translateY(100vh); }
+      }
+      
+      @keyframes dust-drift {
+        0% {
+            transform: translateX(-100px) translateY(0);
+            opacity: 0;
+        }
+        10%, 80% {
+            opacity: 1;
+        }
+        100% {
+            transform: translateX(100vw) translateY(20px);
+            opacity: 0;
+        }
+      }
+
+      @keyframes sparks-fly {
+        0% {
+            transform: translate(0, 0) scale(1);
+            opacity: 1;
+        }
+        100% {
+            transform: translate(var(--tx, 0), var(--ty, 0)) scale(0);
+            opacity: 0;
+        }
+      }
+
+      @keyframes battle-flash-anim {
+          0%, 100% { opacity: 0; }
+          5% { opacity: 1; }
+          15% { opacity: 0; }
+          50% { opacity: 0; }
+          55% { opacity: 0.8; }
+          65% { opacity: 0; }
+      }
+
+      @keyframes screen-shake {
+        10%, 90% { transform: translate3d(0, 0, 0); }
+        20%, 80% { transform: translate3d(-1px, 0, 0); }
+        30%, 50%, 70% { transform: translate3d(1px, 0, 0); }
+        40%, 60% { transform: translate3d(-1px, 0, 0); }
       }
     </style>
     <link rel="preconnect" href="https://fonts.googleapis.com">

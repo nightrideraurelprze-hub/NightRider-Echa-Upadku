@@ -157,3 +157,31 @@ export const translatePanels = (panels: PanelData[], targetLanguage: string): Pr
     const jsonText = response.text.trim();
     return JSON.parse(jsonText);
 });
+
+
+/**
+ * Generates an image based on a text prompt using the Imagen model.
+ * @param prompt The text prompt for the image.
+ * @returns A promise that resolves to a base64 encoded data URI string.
+ */
+export const generateImage = (prompt: string): Promise<string> => withRetry(async () => {
+    console.log(`Generating image for prompt: "${prompt}"`);
+    const fullPrompt = `${prompt}, post-apocalyptic, comic book art style, cinematic lighting, high detail`;
+    
+    const response = await getAiInstance().models.generateImages({
+        model: 'imagen-4.0-generate-001',
+        prompt: fullPrompt,
+        config: {
+          numberOfImages: 1,
+          outputMimeType: 'image/png',
+          aspectRatio: '16:9',
+        },
+    });
+
+    if (!response.generatedImages || response.generatedImages.length === 0) {
+        throw new Error("API did not return any images.");
+    }
+
+    const base64ImageBytes: string = response.generatedImages[0].image.imageBytes;
+    return `data:image/png;base64,${base64ImageBytes}`;
+});

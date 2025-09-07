@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { generateStoryPanels, generateAtmosphericText, translatePanels } from '../services/geminiService';
+import { generateStoryPanels, generateAtmosphericText, translatePanels, generateImage } from '../services/geminiService';
 import * as ttsService from '../services/ttsService';
 import { STORY_CHAPTERS, STORY_CACHE_KEY } from '../lib/storyContent';
 import type { PanelData, PanelsCache } from '../types';
@@ -33,6 +33,9 @@ export const useStoryManager = () => {
   const [currentTrack, setCurrentTrack] = useState<string | null>(null);
 
   const [isAudioUnlocked, setIsAudioUnlocked] = useState(false);
+  const [hasStartedStory, setHasStartedStory] = useState<boolean>(() => {
+    return localStorage.getItem('nightrider-has-started') === 'true';
+  });
 
   const handleUserInteraction = useCallback(() => {
     if (!isAudioUnlocked) {
@@ -40,9 +43,21 @@ export const useStoryManager = () => {
         setIsAudioUnlocked(true);
     }
   }, [isAudioUnlocked]);
+  
+  const startStory = useCallback(() => {
+    handleUserInteraction();
+    setHasStartedStory(true);
+    localStorage.setItem('nightrider-has-started', 'true');
+  }, [handleUserInteraction]);
 
 
   useEffect(() => {
+    // Do not fetch story until the user has passed the intro screen
+    if (!hasStartedStory) {
+        setIsLoading(false);
+        return;
+    }
+
     const fetchAndCreateComic = async () => {
       setIsLoading(true);
       
@@ -87,11 +102,31 @@ export const useStoryManager = () => {
             const panelPrompts = await generateStoryPanels(chapterText);
             
             const chapterPanels: PanelData[] = [];
-            for (const panel of panelPrompts) {
-              const soundscape = await generateAtmosphericText(panel.soundscapePrompt);
-              const imageUrl = getImageUrlForPanel(i + 1, panel.imagePrompt);
-              await cacheService.cacheImage(imageUrl);
+            for (let j = 0; j < panelPrompts.length; j++) {
+              const panel = panelPrompts[j];
 
+              let imageUrl = getImageUrlForPanel(i + 1, panel.imagePrompt);
+
+              if (imageUrl) {
+                // If we have a pre-defined URL, pre-cache it
+                await cacheService.cacheImage(imageUrl);
+              } else {
+                // If no pre-defined image, generate a new one
+                setLoadingMessage(t('generatingImagesForChapter', { current: j + 1, total: panelPrompts.length, chapter: i + 1 }));
+                try {
+                    imageUrl = await generateImage(panel.imagePrompt);
+                } catch (imageError) {
+                    console.error(`Failed to generate image for prompt: "${panel.imagePrompt}". Falling back to placeholder.`, imageError);
+                    const getPlaceholderImageUrl = (text: string) => {
+                      const encodedText = encodeURIComponent(`Image Generation Failed\n${text}`);
+                      return `https://placehold.co/1920x1080/000000/FFBF00/png?text=${encodedText}`;
+                    };
+                    imageUrl = getPlaceholderImageUrl(panel.imagePrompt);
+                }
+              }
+
+              const soundscape = await generateAtmosphericText(panel.soundscapePrompt);
+              
               chapterPanels.push({ 
                 text: panel.text, 
                 imageUrl, 
@@ -117,13 +152,13 @@ export const useStoryManager = () => {
 
     fetchAndCreateComic();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [hasStartedStory]);
 
   useEffect(() => {
-    if (!isLoading) {
+    if (!isLoading && hasStartedStory) {
       localStorage.setItem('nightrider-panel-index', String(currentPanelIndex));
     }
-  }, [currentPanelIndex, isLoading]);
+  }, [currentPanelIndex, isLoading, hasStartedStory]);
 
   useEffect(() => {
     localStorage.setItem('nightrider-tts-enabled', String(isTtsEnabled));
@@ -137,7 +172,7 @@ export const useStoryManager = () => {
   }, [isMusicEnabled]);
   
   useEffect(() => {
-    if (!isTtsEnabled || displayedPanels.length === 0) {
+    if (!isTtsEnabled || displayedPanels.length === 0 || !hasStartedStory) {
       setNarrationAudioBlob(null);
       return;
     }
@@ -179,19 +214,19 @@ export const useStoryManager = () => {
       isMounted = false;
       setNarrationAudioBlob(null);
     };
-  }, [currentPanelIndex, isTtsEnabled, displayedPanels, language]);
+  }, [currentPanelIndex, isTtsEnabled, displayedPanels, language, hasStartedStory]);
 
 
   useEffect(() => {
-    if (isMusicEnabled && displayedPanels.length > 0) {
+    if (isMusicEnabled && displayedPanels.length > 0 && hasStartedStory) {
       setCurrentTrack(getTrackForSoundscape(displayedPanels[currentPanelIndex]?.soundscape));
     } else {
       setCurrentTrack(null);
     }
-  }, [currentPanelIndex, isMusicEnabled, displayedPanels]);
+  }, [currentPanelIndex, isMusicEnabled, displayedPanels, hasStartedStory]);
 
   useEffect(() => {
-    if (isLoading) return;
+    if (isLoading || !hasStartedStory) return;
     const handleLanguageChange = async () => {
       if (panelsCache[language] && panelsCache[language].length > 0) {
         setDisplayedPanels(panelsCache[language]);
@@ -214,7 +249,7 @@ export const useStoryManager = () => {
       }
     };
     handleLanguageChange();
-  }, [language, languageName, sourcePanels, panelsCache, isLoading]);
+  }, [language, languageName, sourcePanels, panelsCache, isLoading, hasStartedStory]);
   
   const goToNextPanel = useCallback(() => {
     handleUserInteraction();
@@ -265,6 +300,7 @@ export const useStoryManager = () => {
       narrationAudioBlob,
       isNarrationLoading,
       isAudioUnlocked,
+      hasStartedStory,
     },
     actions: {
       goToNextPanel,
@@ -275,6 +311,7 @@ export const useStoryManager = () => {
       handleToggleMusic,
       handleUserInteraction,
       handleKeyDown,
+      startStory,
     }
   };
 };

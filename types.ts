@@ -23,4 +23,6 @@ export interface SavedProgress {
   isTtsEnabled: boolean;
   isMusicEnabled: boolean;
   hasStartedStory: boolean;
+  sourcePanels: PanelData[];
+  panelsCache: PanelsCache;
 }

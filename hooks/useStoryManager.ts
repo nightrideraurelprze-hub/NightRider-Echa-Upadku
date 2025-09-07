@@ -8,21 +8,82 @@ import { getImageUrlForPanel } from '../lib/imageMapping';
 import { mockPanelData, mockTranslatedPanelData } from '../lib/mockPanelData';
 import { getTrackForSoundscape } from '../lib/audioTracks';
 import * as cacheService from '../services/cacheService';
-import { PROGRESS_CACHE_KEY, STORY_CACHE_KEY } from '../constants';
+import { PROGRESS_CACHE_KEY } from '../constants';
 
-// Gracefully handle environments where process.env is not defined (like local static servers).
-// Default to preview mode (USE_API = false) in such cases to prevent app crashes.
 const USE_API = typeof process !== 'undefined' && typeof process.env !== 'undefined' && process.env.USE_API !== 'false';
 
+async function initializeStoryState(t: (key: string, replacements?: { [key: string]: string | number }) => string, setLoadingMessage: (msg: string) => void) {
+    if (!USE_API) {
+        setLoadingMessage('Loading from local preview data...');
+        await new Promise(resolve => setTimeout(resolve, 500));
+        return {
+            sourcePanels: mockPanelData,
+            panelsCache: { pl: mockPanelData, en: mockTranslatedPanelData },
+        };
+    }
+
+    const missingKeys = [];
+    if (!process.env.API_KEY) missingKeys.push('API_KEY (for Gemini)');
+    if (!process.env.ELEVENLABS_API_KEY) missingKeys.push('ELEVENLABS_API_KEY');
+    if (missingKeys.length > 0) {
+        const errorMsg = `Critical Error: Environment variable(s) for ${missingKeys.join(', ')} are missing.`;
+        console.error(`[API Mode] ${errorMsg}`);
+        throw new Error(errorMsg);
+    }
+
+    let allPanels: PanelData[] = [];
+    const totalChapters = STORY_CHAPTERS.length;
+    for (let i = 0; i < totalChapters; i++) {
+        const chapterText = STORY_CHAPTERS[i];
+        setLoadingMessage(t('generatingChapter', { current: i + 1, total: totalChapters }));
+        const panelPrompts = await generateStoryPanels(chapterText);
+
+        const chapterPanels: PanelData[] = [];
+        for (let j = 0; j < panelPrompts.length; j++) {
+            const panel = panelPrompts[j];
+            let imageUrl = getImageUrlForPanel(i + 1, panel.imagePrompt);
+
+            if (imageUrl) {
+                await cacheService.cacheImage(imageUrl);
+            } else {
+                setLoadingMessage(t('generatingImagesForChapter', { current: j + 1, total: panelPrompts.length, chapter: i + 1 }));
+                try {
+                    imageUrl = await generateImage(panel.imagePrompt);
+                } catch (imageError) {
+                    console.error(`Failed to generate image for prompt: "${panel.imagePrompt}". Falling back to placeholder.`, imageError);
+                    const getPlaceholderImageUrl = (text: string) => {
+                        const encodedText = encodeURIComponent(`Image Generation Failed\n${text}`);
+                        return `https://placehold.co/1920x1080/000000/FFBF00/png?text=${encodedText}`;
+                    };
+                    imageUrl = getPlaceholderImageUrl(panel.imagePrompt);
+                }
+            }
+            const soundscape = await generateAtmosphericText(panel.soundscapePrompt);
+            chapterPanels.push({
+                text: panel.text,
+                imageUrl,
+                soundscape,
+                chapter: i + 1,
+                speakerGender: panel.speakerGender
+            });
+        }
+        allPanels = [...allPanels, ...chapterPanels];
+    }
+    return {
+        sourcePanels: allPanels,
+        panelsCache: { pl: allPanels, en: [] },
+    };
+}
+
+
 export const useStoryManager = () => {
-  // Load initial state from consolidated progress cache
   const savedProgress = cacheService.getProgressFromCache(PROGRESS_CACHE_KEY);
 
-  const [sourcePanels, setSourcePanels] = useState<PanelData[]>([]);
+  const [sourcePanels, setSourcePanels] = useState<PanelData[]>(savedProgress?.sourcePanels || []);
   const [displayedPanels, setDisplayedPanels] = useState<PanelData[]>([]);
-  const [panelsCache, setPanelsCache] = useState<PanelsCache>({ pl: [], en: [] });
+  const [panelsCache, setPanelsCache] = useState<PanelsCache>(savedProgress?.panelsCache || { pl: [], en: [] });
   const [currentPanelIndex, setCurrentPanelIndex] = useState<number>(savedProgress?.currentPanelIndex || 0);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isLoading, setIsLoading] = useState<boolean>(!savedProgress);
   const [isTranslating, setIsTranslating] = useState<boolean>(false);
   const [loadingMessage, setLoadingMessage] = useState<string>('');
   const { t, language, languageName } = useLanguage();
@@ -47,12 +108,12 @@ export const useStoryManager = () => {
   const startStory = useCallback(() => {
     handleUserInteraction();
     setHasStartedStory(true);
+    setIsLoading(true);
   }, [handleUserInteraction]);
 
   // Consolidated save effect for user progress
   useEffect(() => {
-    // Don't save initial default state until loading is complete and user has started
-    if (isLoading || !hasStartedStory) return;
+    if (isLoading) return;
 
     const progress: SavedProgress = {
       version: '1.0',
@@ -60,105 +121,27 @@ export const useStoryManager = () => {
       isTtsEnabled,
       isMusicEnabled,
       hasStartedStory,
+      sourcePanels,
+      panelsCache,
     };
     cacheService.saveProgressToCache(PROGRESS_CACHE_KEY, progress);
-  }, [currentPanelIndex, isTtsEnabled, isMusicEnabled, hasStartedStory, isLoading]);
-
+  }, [currentPanelIndex, isTtsEnabled, isMusicEnabled, hasStartedStory, isLoading, sourcePanels, panelsCache]);
 
   useEffect(() => {
-    // Do not fetch story until the user has passed the intro screen
-    if (!hasStartedStory) {
+    if (!hasStartedStory || sourcePanels.length > 0) {
         setIsLoading(false);
         return;
     }
 
     const fetchAndCreateComic = async () => {
-      setIsLoading(true);
-      
-      if (!USE_API) {
-        setLoadingMessage('Loading from local preview data...');
-        setTimeout(() => {
-          setSourcePanels(mockPanelData);
-          setPanelsCache({ pl: mockPanelData, en: mockTranslatedPanelData });
-          const initialLang = localStorage.getItem('nightrider-language') || 'pl';
-          setDisplayedPanels(initialLang === 'en' ? mockTranslatedPanelData : mockPanelData);
-          setIsLoading(false);
-        }, 500);
-        return;
-      }
-      
-      const missingKeys = [];
-      if (!process.env.API_KEY) missingKeys.push('API_KEY (for Gemini)');
-      if (!process.env.ELEVENLABS_API_KEY) missingKeys.push('ELEVENLABS_API_KEY');
-      if (missingKeys.length > 0) {
-        const errorMsg = `Critical Error: Environment variable(s) for ${missingKeys.join(', ')} are missing.`;
-        console.error(`[API Mode] ${errorMsg}`);
-        setLoadingMessage(errorMsg);
-        return;
-      }
-
-      const cachedData = await cacheService.getStoryFromCache(STORY_CACHE_KEY);
-      if (cachedData) {
-        setLoadingMessage(t('loadingAssets'));
-        setSourcePanels(cachedData);
-        setPanelsCache({ pl: cachedData });
-        setDisplayedPanels(cachedData);
-        setIsLoading(false);
-        return;
-      }
-      
-      let allPanels: PanelData[] = [];
       try {
-        const totalChapters = STORY_CHAPTERS.length;
-        for (let i = 0; i < totalChapters; i++) {
-            const chapterText = STORY_CHAPTERS[i];
-            setLoadingMessage(t('generatingChapter', { current: i + 1, total: totalChapters }));
-            const panelPrompts = await generateStoryPanels(chapterText);
-            
-            const chapterPanels: PanelData[] = [];
-            for (let j = 0; j < panelPrompts.length; j++) {
-              const panel = panelPrompts[j];
-
-              let imageUrl = getImageUrlForPanel(i + 1, panel.imagePrompt);
-
-              if (imageUrl) {
-                // If we have a pre-defined URL, pre-cache it
-                await cacheService.cacheImage(imageUrl);
-              } else {
-                // If no pre-defined image, generate a new one
-                setLoadingMessage(t('generatingImagesForChapter', { current: j + 1, total: panelPrompts.length, chapter: i + 1 }));
-                try {
-                    imageUrl = await generateImage(panel.imagePrompt);
-                } catch (imageError) {
-                    console.error(`Failed to generate image for prompt: "${panel.imagePrompt}". Falling back to placeholder.`, imageError);
-                    const getPlaceholderImageUrl = (text: string) => {
-                      const encodedText = encodeURIComponent(`Image Generation Failed\n${text}`);
-                      return `https://placehold.co/1920x1080/000000/FFBF00/png?text=${encodedText}`;
-                    };
-                    imageUrl = getPlaceholderImageUrl(panel.imagePrompt);
-                }
-              }
-
-              const soundscape = await generateAtmosphericText(panel.soundscapePrompt);
-              
-              chapterPanels.push({ 
-                text: panel.text, 
-                imageUrl, 
-                soundscape, 
-                chapter: i + 1,
-                speakerGender: panel.speakerGender 
-              });
-            }
-            allPanels = [...allPanels, ...chapterPanels];
-        }
-        
-        setSourcePanels(allPanels);
-        setDisplayedPanels(allPanels);
-        setPanelsCache({ pl: allPanels });
-        await cacheService.saveStoryToCache(STORY_CACHE_KEY, allPanels);
+        const { sourcePanels: newSourcePanels, panelsCache: newPanelsCache } = await initializeStoryState(t, setLoadingMessage);
+        setSourcePanels(newSourcePanels);
+        setPanelsCache(newPanelsCache);
       } catch (error: any) {
         console.error("Failed to generate comic book panels:", error);
-        setLoadingMessage(error?.message === 'DAILY_QUOTA_EXCEEDED' ? t('dailyQuotaError') : t('criticalError'));
+        const errorMessage = error?.message === 'DAILY_QUOTA_EXCEEDED' ? t('dailyQuotaError') : t('criticalError');
+        setLoadingMessage(errorMessage || "An unknown error occurred during story initialization.");
       } finally {
         setIsLoading(false);
       }
@@ -167,12 +150,6 @@ export const useStoryManager = () => {
     fetchAndCreateComic();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hasStartedStory]);
-
-  useEffect(() => {
-    if (!isTtsEnabled) {
-      setNarrationAudioBlob(null);
-    }
-  }, [isTtsEnabled]);
   
   useEffect(() => {
     if (!isTtsEnabled || displayedPanels.length === 0 || !hasStartedStory) {
@@ -229,13 +206,21 @@ export const useStoryManager = () => {
   }, [currentPanelIndex, isMusicEnabled, displayedPanels, hasStartedStory]);
 
   useEffect(() => {
-    if (isLoading || !hasStartedStory) return;
+    if (isLoading || !hasStartedStory) {
+        if (savedProgress) {
+            setDisplayedPanels(savedProgress.panelsCache[language] || savedProgress.sourcePanels);
+        }
+        return;
+    };
+    
     const handleLanguageChange = async () => {
       if (panelsCache[language] && panelsCache[language].length > 0) {
         setDisplayedPanels(panelsCache[language]);
       } else { 
         if (!USE_API) { // Preview mode fix
-          setDisplayedPanels(language === 'en' ? mockTranslatedPanelData : mockPanelData);
+          const previewPanels = language === 'en' ? mockTranslatedPanelData : mockPanelData;
+          setPanelsCache(prev => ({ ...prev, [language]: previewPanels }));
+          setDisplayedPanels(previewPanels);
           return;
         }
         setIsTranslating(true);
@@ -252,7 +237,7 @@ export const useStoryManager = () => {
       }
     };
     handleLanguageChange();
-  }, [language, languageName, sourcePanels, panelsCache, isLoading, hasStartedStory]);
+  }, [language, languageName, sourcePanels, panelsCache, isLoading, hasStartedStory, savedProgress]);
   
   const goToNextPanel = useCallback(() => {
     handleUserInteraction();

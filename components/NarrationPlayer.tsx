@@ -13,31 +13,30 @@ export const NarrationPlayer: React.FC<NarrationPlayerProps> = ({ blob, isPlayin
     const audio = audioRef.current;
     if (!audio) return;
 
-    // Clean up previous object URL if it exists
-    if (objectUrlRef.current) {
-      URL.revokeObjectURL(objectUrlRef.current);
-      objectUrlRef.current = null;
-    }
-
-    if (blob && isPlaying) {
-      // Create a new URL for the new blob
-      objectUrlRef.current = URL.createObjectURL(blob);
-      audio.src = objectUrlRef.current;
-      audio.load();
-      const playPromise = audio.play();
-      if (playPromise !== undefined) {
-        playPromise.catch(e => console.error("Audio play failed:", e));
+    // If we're supposed to be playing and have a blob
+    if (isPlaying && blob) {
+      // Create a new URL if the blob is new
+      if (audio.src.includes('blob:') === false || !objectUrlRef.current) {
+         if (objectUrlRef.current) {
+            URL.revokeObjectURL(objectUrlRef.current);
+        }
+        objectUrlRef.current = URL.createObjectURL(blob);
+        audio.src = objectUrlRef.current;
       }
+      
+      // Play the audio
+      if (audio.paused) {
+        audio.play().catch(e => console.error("Narration audio play failed:", e));
+      }
+
     } else {
-      // If not playing or no blob, ensure player is stopped and reset.
+      // If we're not supposed to be playing, pause the audio
       if (!audio.paused) {
         audio.pause();
       }
-      audio.removeAttribute('src');
-      audio.load();
     }
-    
-    // Cleanup function to run when the component unmounts or dependencies change
+
+    // Cleanup function to revoke URL on unmount
     return () => {
       if (objectUrlRef.current) {
         URL.revokeObjectURL(objectUrlRef.current);

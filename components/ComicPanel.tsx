@@ -140,13 +140,6 @@ export const ComicPanel: React.FC<ComicPanelProps> = ({ panel, isVisible, isTtsE
           )}
         </div>
       </div>
-      
-      {/* Soundscape Text (bottom) */}
-      <div className="absolute bottom-0 left-0 w-full soundscape-bg p-2 md:p-3 animate-fade-in">
-         <p className="text-amber-400/70 text-sm text-center italic font-sans">
-            {panel.soundscape}
-          </p>
-      </div>
     </div>
   );
 };

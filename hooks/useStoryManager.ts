@@ -11,7 +11,7 @@ import * as cacheService from '../services/cacheService';
 
 // Gracefully handle environments where process.env is not defined (like local static servers).
 // Default to preview mode (USE_API = false) in such cases to prevent app crashes.
-const USE_API = typeof process !== 'undefined' && process.env.USE_API !== 'false';
+const USE_API = typeof process !== 'undefined' && typeof process.env !== 'undefined' && process.env.USE_API !== 'false';
 
 export const useStoryManager = () => {
   const [sourcePanels, setSourcePanels] = useState<PanelData[]>([]);

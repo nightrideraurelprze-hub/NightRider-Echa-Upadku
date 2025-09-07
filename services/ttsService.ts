@@ -18,7 +18,6 @@ function getElevenLabsClient(): ElevenLabsClient {
     return elevenlabs;
 }
 
-
 /**
  * Generates speech audio from text using the ElevenLabs API SDK.
  * @param text The text to convert to speech.
@@ -26,7 +25,7 @@ function getElevenLabsClient(): ElevenLabsClient {
  * @returns A promise that resolves to an audio Blob.
  */
 export const generateSpeech = async (text: string, speakerGender: PanelData['speakerGender']): Promise<Blob> => {
-    const client = getElevenLabsClient();
+    const elevenlabsClient = getElevenLabsClient(); // Use a locally scoped client variable
 
     let voiceId: string;
     switch (speakerGender) {
@@ -42,9 +41,9 @@ export const generateSpeech = async (text: string, speakerGender: PanelData['spe
             voiceId = MALE_VOICE_ID;
             break;
     }
-    
+
     try {
-        const audioStream = await client.generate({
+        const audioStream = await elevenlabsClient.generate({ // Use the correct client variable
             voice: voiceId,
             text,
             model_id: 'eleven_multilingual_v2',

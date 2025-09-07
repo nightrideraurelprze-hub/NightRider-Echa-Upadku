@@ -9,9 +9,9 @@ import { mockPanelData, mockTranslatedPanelData } from '../lib/mockPanelData';
 import { getTrackForSoundscape } from '../lib/audioTracks';
 import * as cacheService from '../services/cacheService';
 
-// Use environment variable to determine if API calls should be made.
-// Defaults to true (live mode) if not set or not 'false'.
-const USE_API = process.env.USE_API !== 'false';
+// Gracefully handle environments where process.env is not defined (like local static servers).
+// Default to preview mode (USE_API = false) in such cases to prevent app crashes.
+const USE_API = typeof process !== 'undefined' && process.env.USE_API !== 'false';
 
 export const useStoryManager = () => {
   const [sourcePanels, setSourcePanels] = useState<PanelData[]>([]);

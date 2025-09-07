@@ -1,7 +1,19 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import type { PanelPromptData, PanelData } from '../types';
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+let ai: GoogleGenAI | null = null;
+
+function getAiInstance(): GoogleGenAI {
+    if (!ai) {
+        const apiKey = typeof process !== 'undefined' ? process.env.API_KEY : undefined;
+        if (!apiKey) {
+            throw new Error("Gemini API key is not configured. Please set the API_KEY environment variable.");
+        }
+        ai = new GoogleGenAI({ apiKey });
+    }
+    return ai;
+}
+
 
 const panelSchema = {
   type: Type.OBJECT,
@@ -76,10 +88,7 @@ async function withRetry<T>(fn: () => Promise<T>, maxRetries = 5, initialDelay =
  * @returns A promise that resolves to an array of panel prompt data.
  */
 export const generateStoryPanels = (storyText: string): Promise<PanelPromptData[]> => withRetry(async () => {
-    if (!process.env.API_KEY) {
-      throw new Error("Gemini API key is not configured. Please set the API_KEY environment variable.");
-    }
-    const response = await ai.models.generateContent({
+    const response = await getAiInstance().models.generateContent({
       model: 'gemini-2.5-flash',
       contents: `Analyze the following post-apocalyptic story and break it down into a series of distinct, sequential comic book panels. For each panel, provide a short narrative text, a conceptual image prompt (as a key), a brief soundscape prompt, and identify the speaker's gender ('narrator', 'male', 'female', 'machine'). Ensure the panels logically follow the story's progression. Here is the story: ${storyText}`,
       config: {
@@ -110,10 +119,7 @@ export const generateStoryPanels = (storyText: string): Promise<PanelPromptData[
  * @returns A promise that resolves to the generated text.
  */
 export const generateAtmosphericText = (prompt: string): Promise<string> => withRetry(async () => {
-    if (!process.env.API_KEY) {
-      throw new Error("Gemini API key is not configured. Please set the API_KEY environment variable.");
-    }
-    const response = await ai.models.generateContent({
+    const response = await getAiInstance().models.generateContent({
       model: 'gemini-2.5-flash',
       contents: prompt,
     });
@@ -127,10 +133,7 @@ export const generateAtmosphericText = (prompt: string): Promise<string> => with
  * @returns A promise that resolves to an array of translated panel data.
  */
 export const translatePanels = (panels: PanelData[], targetLanguage: string): Promise<PanelData[]> => withRetry(async () => {
-    if (!process.env.API_KEY) {
-      throw new Error("Gemini API key is not configured. Please set the API_KEY environment variable.");
-    }
-    const response = await ai.models.generateContent({
+    const response = await getAiInstance().models.generateContent({
       model: 'gemini-2.5-flash',
       contents: `Translate the 'text' and 'soundscape' fields for each object in the following JSON array into ${targetLanguage}. Do not translate any other fields like 'imageUrl', 'chapter', or 'speakerGender'. Maintain the original JSON structure. Here is the data: ${JSON.stringify(panels)}`,
       config: {

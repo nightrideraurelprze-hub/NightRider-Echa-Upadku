@@ -6,11 +6,18 @@ const FEMALE_VOICE_ID = '21m00Tcm4TlvDq8ikWAM'; // Rachel (Multi-language)
 const MACHINE_VOICE_ID = 'JBFqnCBsd6RMkjVDRZzb'; // Optional: A more robotic voice
 
 let elevenlabs: ElevenLabsClient | null = null;
-if (process.env.ELEVENLABS_API_KEY) {
-    elevenlabs = new ElevenLabsClient({
-        apiKey: process.env.ELEVENLABS_API_KEY,
-    });
+
+function getElevenLabsClient(): ElevenLabsClient {
+    if (!elevenlabs) {
+        const apiKey = typeof process !== 'undefined' ? process.env.ELEVENLABS_API_KEY : undefined;
+        if (!apiKey) {
+            throw new Error("ElevenLabs API key is not configured. Please set the ELEVENLABS_API_KEY environment variable.");
+        }
+        elevenlabs = new ElevenLabsClient({ apiKey });
+    }
+    return elevenlabs;
 }
+
 
 /**
  * Generates speech audio from text using the ElevenLabs API SDK.
@@ -19,9 +26,7 @@ if (process.env.ELEVENLABS_API_KEY) {
  * @returns A promise that resolves to an audio Blob.
  */
 export const generateSpeech = async (text: string, speakerGender: PanelData['speakerGender']): Promise<Blob> => {
-    if (!elevenlabs) {
-        throw new Error("ElevenLabs API key is not configured. Please set the ELEVENLABS_API_KEY environment variable.");
-    }
+    const client = getElevenLabsClient();
 
     let voiceId: string;
     switch (speakerGender) {
@@ -39,7 +44,7 @@ export const generateSpeech = async (text: string, speakerGender: PanelData['spe
     }
     
     try {
-        const audioStream = await elevenlabs.textToSpeech.convert(voiceId, {
+        const audioStream = await client.textToSpeech.convert(voiceId, {
             text: text,
             model_id: 'eleven_multilingual_v2',
             voice_settings: {

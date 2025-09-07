@@ -44,8 +44,9 @@ export const generateSpeech = async (text: string, speakerGender: PanelData['spe
     }
     
     try {
-        const audioStream = await client.textToSpeech.convert(voiceId, {
-            text: text,
+        const audioStream = await client.generate({
+            voice: voiceId,
+            text,
             model_id: 'eleven_multilingual_v2',
             voice_settings: {
                 stability: 0.5,

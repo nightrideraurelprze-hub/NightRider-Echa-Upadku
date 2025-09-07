@@ -10,104 +10,73 @@ import { getTrackForSoundscape } from '../lib/audioTracks';
 import * as cacheService from '../services/cacheService';
 import { PROGRESS_CACHE_KEY } from '../constants';
 
-// Use Vite's standard way of accessing env variables. Defaults to true if not 'false'.
 const USE_API = import.meta.env.VITE_USE_API !== 'false';
 
-async function initializeStoryState(t: (key: string, replacements?: { [key: string]: string | number }) => string, setLoadingMessage: (msg: string) => void) {
-    if (!USE_API) {
-        setLoadingMessage('Loading from local preview data...');
-        await new Promise(resolve => setTimeout(resolve, 500));
-        return {
-            sourcePanels: mockPanelData,
-            panelsCache: { pl: mockPanelData, en: mockTranslatedPanelData },
-        };
+async function loadSingleChapter(chapterText: string, chapterNumber: number, t: (key: string, replacements?: { [key: string]: string | number }) => string): Promise<PanelData[]> {
+    const panelPrompts = await generateStoryPanels(chapterText);
+
+    const uniqueImagePrompts = [...new Set(panelPrompts.map(p => p.imagePrompt))];
+    let keyImagePrompts: string[];
+    if (uniqueImagePrompts.length <= 3) {
+        keyImagePrompts = uniqueImagePrompts;
+    } else {
+        const middleIndex = Math.floor(uniqueImagePrompts.length / 2);
+        keyImagePrompts = [
+            uniqueImagePrompts[0],
+            uniqueImagePrompts[middleIndex],
+            uniqueImagePrompts[uniqueImagePrompts.length - 1]
+        ].filter(Boolean);
     }
 
-    const missingKeys = [];
-    if (!import.meta.env.VITE_GEMINI_API_KEY) missingKeys.push('VITE_GEMINI_API_KEY');
-    if (!import.meta.env.VITE_ELEVENLABS_API_KEY) missingKeys.push('VITE_ELEVENLABS_API_KEY');
-    if (missingKeys.length > 0) {
-        const errorMsg = `Critical Error: Environment variable(s) for ${missingKeys.join(', ')} are missing.`;
-        console.error(`[API Mode] ${errorMsg}`);
-        throw new Error(errorMsg);
+    const chapterImageMap = new Map<string, string>();
+    if (USE_API) {
+        t('generatingKeyVisuals', { chapter: chapterNumber });
     }
-
-    let allPanels: PanelData[] = [];
-    const totalChapters = STORY_CHAPTERS.length;
-    for (let i = 0; i < totalChapters; i++) {
-        const chapterText = STORY_CHAPTERS[i];
-        setLoadingMessage(t('generatingChapter', { current: i + 1, total: totalChapters }));
-        const panelPrompts = await generateStoryPanels(chapterText);
-
-        // 1. Select up to 3 key image prompts for the chapter
-        const uniqueImagePrompts = [...new Set(panelPrompts.map(p => p.imagePrompt))];
-        let keyImagePrompts: string[];
-        if (uniqueImagePrompts.length <= 3) {
-            keyImagePrompts = uniqueImagePrompts;
-        } else {
-            const middleIndex = Math.floor(uniqueImagePrompts.length / 2);
-            keyImagePrompts = [
-                uniqueImagePrompts[0],
-                uniqueImagePrompts[middleIndex],
-                uniqueImagePrompts[uniqueImagePrompts.length - 1]
-            ].filter(Boolean); // Filter out potential undefined if array is small
-        }
-
-        // 2. Generate or fetch URLs for these key prompts
-        const chapterImageMap = new Map<string, string>();
-        setLoadingMessage(t('generatingKeyVisuals', { chapter: i + 1 }));
-        for (const prompt of keyImagePrompts) {
-            let imageUrl = getImageUrlForPanel(i + 1, prompt);
-            if (imageUrl) {
-                await cacheService.cacheImage(imageUrl);
-            } else {
-                try {
-                    imageUrl = await generateImage(prompt);
-                } catch (imageError) {
-                    console.error(`Failed to generate image for prompt: "${prompt}". Falling back to placeholder.`, imageError);
-                    const getPlaceholderImageUrl = (text: string) => {
-                        const encodedText = encodeURIComponent(`Image Generation Failed\n${text}`);
-                        return `https://placehold.co/1920x1080/000000/FFBF00/png?text=${encodedText}`;
-                    };
-                    imageUrl = getPlaceholderImageUrl(prompt);
-                }
-            }
-            if (imageUrl) {
-                chapterImageMap.set(prompt, imageUrl);
+    for (const prompt of keyImagePrompts) {
+        let imageUrl = getImageUrlForPanel(chapterNumber, prompt);
+        if (!imageUrl) {
+            try {
+                imageUrl = await generateImage(prompt);
+            } catch (imageError) {
+                console.error(`Failed to generate image for prompt: "${prompt}". Falling back to placeholder.`, imageError);
+                const getPlaceholderImageUrl = (text: string) => {
+                    const encodedText = encodeURIComponent(`Image Generation Failed\n${text}`);
+                    return `https://placehold.co/1920x1080/000000/FFBF00/png?text=${encodedText}`;
+                };
+                imageUrl = getPlaceholderImageUrl(prompt);
             }
         }
-
-        const chapterKeyImages = Array.from(chapterImageMap.values());
-        if(chapterKeyImages.length === 0) {
-            // Add a default placeholder if no images could be generated/found
-            chapterKeyImages.push(`https://placehold.co/1920x1080/000000/FFBF00/png?text=No+Image+Available`);
+        if (imageUrl) {
+            await cacheService.cacheImage(imageUrl);
+            chapterImageMap.set(prompt, imageUrl);
         }
-        
-        // 3. Create chapter panels, assigning one of the key images to each panel
-        const chapterPanels: PanelData[] = [];
-        for (let j = 0; j < panelPrompts.length; j++) {
-            const panel = panelPrompts[j];
-            const imageUrl = chapterKeyImages[j % chapterKeyImages.length];
-            const soundscape = await generateAtmosphericText(panel.soundscapePrompt);
-            chapterPanels.push({
-                text: panel.text,
-                imageUrl,
-                soundscape,
-                chapter: i + 1,
-                speakerGender: panel.speakerGender
-            });
-        }
-        allPanels = [...allPanels, ...chapterPanels];
     }
-    return {
-        sourcePanels: allPanels,
-        panelsCache: { pl: allPanels, en: [] },
-    };
+
+    const chapterKeyImages = Array.from(chapterImageMap.values());
+    if (chapterKeyImages.length === 0) {
+        chapterKeyImages.push(`https://placehold.co/1920x1080/000000/FFBF00/png?text=No+Image+Available`);
+    }
+
+    const chapterPanels: PanelData[] = [];
+    for (let j = 0; j < panelPrompts.length; j++) {
+        const panel = panelPrompts[j];
+        const imageUrl = chapterKeyImages[j % chapterKeyImages.length];
+        const soundscape = await generateAtmosphericText(panel.soundscapePrompt);
+        chapterPanels.push({
+            text: panel.text,
+            imageUrl,
+            soundscape,
+            chapter: chapterNumber,
+            speakerGender: panel.speakerGender
+        });
+    }
+    return chapterPanels;
 }
 
 
 export const useStoryManager = () => {
   const savedProgress = cacheService.getProgressFromCache(PROGRESS_CACHE_KEY);
+  const { t, language, languageName } = useLanguage();
 
   const [sourcePanels, setSourcePanels] = useState<PanelData[]>(savedProgress?.sourcePanels || []);
   const [displayedPanels, setDisplayedPanels] = useState<PanelData[]>(() => {
@@ -118,11 +87,11 @@ export const useStoryManager = () => {
     return [];
   });
   const [panelsCache, setPanelsCache] = useState<PanelsCache>(savedProgress?.panelsCache || { pl: [], en: [] });
+  const [loadedChaptersCount, setLoadedChaptersCount] = useState<number>(savedProgress?.loadedChaptersCount || 0);
   const [currentPanelIndex, setCurrentPanelIndex] = useState<number>(savedProgress?.currentPanelIndex || 0);
   const [isLoading, setIsLoading] = useState<boolean>(!savedProgress);
   const [isTranslating, setIsTranslating] = useState<boolean>(false);
   const [loadingMessage, setLoadingMessage] = useState<string>('');
-  const { t, language, languageName } = useLanguage();
   
   const [isTtsEnabled, setIsTtsEnabled] = useState<boolean>(savedProgress?.isTtsEnabled ?? false);
   const [isMusicEnabled, setIsMusicEnabled] = useState<boolean>(savedProgress?.isMusicEnabled ?? false);
@@ -159,23 +128,36 @@ export const useStoryManager = () => {
       hasStartedStory,
       sourcePanels,
       panelsCache,
+      loadedChaptersCount,
     };
     cacheService.saveProgressToCache(PROGRESS_CACHE_KEY, progress);
-  }, [currentPanelIndex, isTtsEnabled, isMusicEnabled, hasStartedStory, isLoading, sourcePanels, panelsCache]);
+  }, [currentPanelIndex, isTtsEnabled, isMusicEnabled, hasStartedStory, isLoading, sourcePanels, panelsCache, loadedChaptersCount]);
 
+  // Effect to load the first chapter
   useEffect(() => {
     if (!hasStartedStory || sourcePanels.length > 0) {
         setIsLoading(false);
         return;
     }
 
-    const fetchAndCreateComic = async () => {
+    const fetchFirstChapter = async () => {
       try {
-        const { sourcePanels: newSourcePanels, panelsCache: newPanelsCache } = await initializeStoryState(t, setLoadingMessage);
-        setSourcePanels(newSourcePanels);
-        setPanelsCache(newPanelsCache);
+        if (!USE_API) {
+            setLoadingMessage('Loading from local preview data...');
+            await new Promise(resolve => setTimeout(resolve, 500));
+            setSourcePanels(mockPanelData);
+            setPanelsCache({ pl: mockPanelData, en: mockTranslatedPanelData });
+            setLoadedChaptersCount(STORY_CHAPTERS.length); // All mock chapters are "loaded"
+            return;
+        }
+
+        setLoadingMessage(t('generatingChapter', { current: 1, total: STORY_CHAPTERS.length }));
+        const firstChapterPanels = await loadSingleChapter(STORY_CHAPTERS[0], 1, t);
+        setSourcePanels(firstChapterPanels);
+        setPanelsCache({ pl: firstChapterPanels, en: [] });
+        setLoadedChaptersCount(1);
       } catch (error: any) {
-        console.error("Failed to generate comic book panels:", error);
+        console.error("Failed to generate first chapter:", error);
         const errorMessage = error?.message === 'DAILY_QUOTA_EXCEEDED' ? t('dailyQuotaError') : t('criticalError');
         setLoadingMessage(errorMessage || "An unknown error occurred during story initialization.");
       } finally {
@@ -183,9 +165,44 @@ export const useStoryManager = () => {
       }
     };
 
-    fetchAndCreateComic();
+    fetchFirstChapter();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hasStartedStory]);
+
+  // Effect to load subsequent chapters in the background
+  useEffect(() => {
+      if (USE_API && hasStartedStory && loadedChaptersCount > 0 && loadedChaptersCount < STORY_CHAPTERS.length) {
+          const loadNextChapter = async () => {
+              const nextChapterIndex = loadedChaptersCount;
+              const nextChapterNumber = nextChapterIndex + 1;
+              
+              console.log(`Loading chapter ${nextChapterNumber} in the background...`);
+              setLoadingMessage(t('generatingChapter', { current: nextChapterNumber, total: STORY_CHAPTERS.length }));
+
+              try {
+                  const nextChapterPanels = await loadSingleChapter(STORY_CHAPTERS[nextChapterIndex], nextChapterNumber, t);
+                  
+                  setSourcePanels(prevPanels => [...prevPanels, ...nextChapterPanels]);
+                  
+                  setPanelsCache(prevCache => ({
+                      ...prevCache,
+                      pl: [...(prevCache.pl || []), ...nextChapterPanels]
+                  }));
+                  
+                  setLoadedChaptersCount(prevCount => prevCount + 1);
+              } catch (error) {
+                  console.error(`Failed to load chapter ${nextChapterNumber} in the background:`, error);
+              } finally {
+                  setLoadingMessage(""); // Clear loading message after background load
+              }
+          };
+
+          const timeoutId = setTimeout(loadNextChapter, 3000); 
+
+          return () => clearTimeout(timeoutId);
+      }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loadedChaptersCount, hasStartedStory]);
   
   useEffect(() => {
     if (!isTtsEnabled || displayedPanels.length === 0 || !hasStartedStory) {
@@ -242,35 +259,37 @@ export const useStoryManager = () => {
   }, [currentPanelIndex, isMusicEnabled, displayedPanels, hasStartedStory]);
 
   useEffect(() => {
-    if (isLoading || !hasStartedStory) {
-        return;
-    };
-    
+    if (isLoading || !hasStartedStory) return;
+
     const handleLanguageChange = async () => {
-      if (panelsCache[language] && panelsCache[language].length > 0) {
-        setDisplayedPanels(panelsCache[language]);
-      } else { 
-        if (!USE_API) { // Preview mode fix
-          const previewPanels = language === 'en' ? mockTranslatedPanelData : mockPanelData;
-          setPanelsCache(prev => ({ ...prev, [language]: previewPanels }));
-          setDisplayedPanels(previewPanels);
-          return;
+        const currentLangCache = panelsCache[language];
+        // Only translate if the cache for the target language is missing or incomplete
+        if (!currentLangCache || currentLangCache.length < sourcePanels.length) {
+            if (!USE_API) {
+                const previewPanels = language === 'en' ? mockTranslatedPanelData : mockPanelData;
+                setPanelsCache(prev => ({ ...prev, [language]: previewPanels }));
+                setDisplayedPanels(previewPanels);
+                return;
+            }
+
+            setIsTranslating(true);
+            try {
+                // Translate all source panels loaded so far
+                const translated = await translatePanels(sourcePanels, languageName);
+                setPanelsCache(prev => ({ ...prev, [language]: translated }));
+                setDisplayedPanels(translated);
+            } catch (error) {
+                console.error(`Failed to translate story to ${language}:`, error);
+                setDisplayedPanels(sourcePanels); // Fallback to source language
+            } finally {
+                setIsTranslating(false);
+            }
+        } else {
+             setDisplayedPanels(currentLangCache);
         }
-        setIsTranslating(true);
-        try {
-          const translated = await translatePanels(sourcePanels, languageName);
-          setPanelsCache(prev => ({ ...prev, [language]: translated }));
-          setDisplayedPanels(translated);
-        } catch (error) {
-          console.error(`Failed to translate story to ${language}:`, error);
-          setDisplayedPanels(sourcePanels);
-        } finally {
-          setIsTranslating(false);
-        }
-      }
     };
     handleLanguageChange();
-  }, [language, languageName, sourcePanels, panelsCache, isLoading, hasStartedStory]);
+}, [language, languageName, sourcePanels, isLoading, hasStartedStory]);
   
   const goToNextPanel = useCallback(() => {
     handleUserInteraction();

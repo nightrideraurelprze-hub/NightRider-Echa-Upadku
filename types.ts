@@ -25,4 +25,5 @@ export interface SavedProgress {
   hasStartedStory: boolean;
   sourcePanels: PanelData[];
   panelsCache: PanelsCache;
+  loadedChaptersCount: number;
 }

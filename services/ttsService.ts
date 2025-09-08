@@ -1,5 +1,5 @@
-// FIX: The ElevenLabs SDK was updated. The main client class is now named 'ElevenLabs' instead of 'ElevenLabsClient'. Updated the import and all usages of the class name.
-import { ElevenLabs } from '@elevenlabs/elevenlabs-js';
+// FIX: The main client class from the ElevenLabs SDK is 'ElevenLabsClient', not 'ElevenLabs'. Reverting the class name fixes type and constructor errors.
+import { ElevenLabsClient } from '@elevenlabs/elevenlabs-js';
 import { PanelData } from '../types';
 
 // Assigning unique, distinct voices for better immersion.
@@ -8,15 +8,18 @@ const MALE_VOICE_ID = 'yoZ06aMzmToKcTNBGrbW';     // Sam: A more rugged, deep vo
 const FEMALE_VOICE_ID = '21m00Tcm4TlvDq8ikWAM';   // Rachel: A clear, versatile female voice.
 const MACHINE_VOICE_ID = 'JBFqnCBsd6RMkjVDRZzb';  // Fin: A synthetic voice for AI/machines.
 
-let elevenlabs: ElevenLabs | null = null;
+// FIX: Corrected type to ElevenLabsClient. 'ElevenLabs' is a namespace and cannot be used as a type.
+let elevenlabs: ElevenLabsClient | null = null;
 
-function getElevenLabsClient(): ElevenLabs {
+// FIX: Corrected return type to ElevenLabsClient.
+function getElevenLabsClient(): ElevenLabsClient {
     if (!elevenlabs) {
         const apiKey = import.meta.env.VITE_ELEVENLABS_API_KEY;
         if (!apiKey) {
             throw new Error("ElevenLabs API key is not configured. Please set the VITE_ELEVENLABS_API_KEY environment variable.");
         }
-        elevenlabs = new ElevenLabs({ apiKey });
+        // FIX: Corrected constructor to use ElevenLabsClient. 'ElevenLabs' is not constructable.
+        elevenlabs = new ElevenLabsClient({ apiKey });
     }
     return elevenlabs;
 }

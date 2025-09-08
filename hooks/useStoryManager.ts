@@ -11,7 +11,9 @@ import { getTrackForSoundscape } from '../lib/audioTracks';
 import * as cacheService from '../services/cacheService';
 import { PROGRESS_CACHE_KEY } from '../constants';
 
-const USE_API = import.meta.env.VITE_USE_API !== 'false';
+// FIX: Default to mock data mode. Only use the API if VITE_USE_API is explicitly set to 'true'.
+// This prevents the app from failing on first run if environment variables aren't set.
+const USE_API = import.meta.env.VITE_USE_API === 'true';
 
 async function loadSingleChapter(chapterText: string, chapterNumber: number, t: (key: string, replacements?: { [key: string]: string | number }) => string): Promise<PanelData[]> {
     const panelPrompts = await generateStoryPanels(chapterText);

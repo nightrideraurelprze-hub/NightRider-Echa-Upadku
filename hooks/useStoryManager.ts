@@ -40,15 +40,11 @@ async function loadSingleChapter(chapterText: string, chapterNumber: number, t: 
         
         if (!imageUrl) {
             try {
-                // A custom URL is missing. Log this and generate a visually distinct placeholder.
-                console.log(`[Story Manager] Custom image not found for prompt: "${prompt}". Generating AI placeholder.`);
-                
-                const placeholderPrompt = `A visually distinct placeholder image for a comic book. The image must have the text 'AI-GENERATED PLACEHOLDER' clearly overlaid in a bold, readable font. The background scene should be a simple, monochromatic sketch based on this description: "${prompt}"`;
-                
-                // Do not add the standard image style suffix, as we want a unique placeholder style.
-                imageUrl = await generateImage(placeholderPrompt);
+                console.log(`[Story Manager] Custom image not found for prompt: "${prompt}". Generating with AI.`);
+                const finalImagePrompt = `${prompt}, cinematic, hyper-realistic, post-apocalyptic style`;
+                imageUrl = await generateImage(finalImagePrompt);
             } catch (imageError) {
-                console.error(`Failed to generate placeholder image for prompt: "${prompt}". Falling back to static placeholder.`, imageError);
+                console.error(`Failed to generate image for prompt: "${prompt}". Falling back to static placeholder.`, imageError);
                 const getPlaceholderImageUrl = (text: string) => {
                     const encodedText = encodeURIComponent(`Image Generation Failed\n${text}`);
                     return `https://placehold.co/1920x1080/000000/FFBF00/png?text=${encodedText}`;

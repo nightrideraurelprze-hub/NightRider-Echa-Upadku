@@ -141,12 +141,13 @@ export const useStoryManager = () => {
 
   // Effect to load the first chapter
   useEffect(() => {
+    // If the story hasn't started or panels are already loaded, do nothing.
     if (!hasStartedStory || sourcePanels.length > 0) {
-        setIsLoading(false);
-        return;
+      return;
     }
 
     const fetchFirstChapter = async () => {
+      setIsLoading(true);
       try {
         if (!USE_API) {
             setLoadingMessage('Loading from local preview data...');

@@ -121,7 +121,6 @@ export const useStoryManager = () => {
   const startStory = useCallback(() => {
     handleUserInteraction();
     setHasStartedStory(true);
-    // Loading state is managed by the main useEffect to handle pre-loading.
   }, [handleUserInteraction]);
 
   // Consolidated save effect for user progress
@@ -141,56 +140,56 @@ export const useStoryManager = () => {
     cacheService.saveProgressToCache(PROGRESS_CACHE_KEY, progress);
   }, [currentPanelIndex, isTtsEnabled, isMusicEnabled, hasStartedStory, isLoading, sourcePanels, panelsCache, loadedChaptersCount]);
 
-  // Effect to pre-load first chapter on mount, and manage loading screen on story start.
+  // Effect to pre-load the first chapter silently on mount
   useEffect(() => {
-    const loadFirstChapter = async () => {
-      if (isFetchingInitialChapter.current || sourcePanels.length > 0) {
+    const preLoadFirstChapter = async () => {
+      // Do nothing if panels are already loaded (from cache) or are being fetched.
+      if (sourcePanels.length > 0 || isFetchingInitialChapter.current) {
         return;
       }
       isFetchingInitialChapter.current = true;
-      console.log("Starting to load Chapter 1...");
+      console.log("Pre-loading Chapter 1 in the background...");
 
       try {
         if (!USE_API) {
-            setLoadingMessage('Loading from local preview data...');
-            await new Promise(resolve => setTimeout(resolve, 500));
-            setSourcePanels(mockPanelData);
-            setPanelsCache({ pl: mockPanelData, en: mockTranslatedPanelData });
-            setLoadedChaptersCount(STORY_CHAPTERS.length);
-            return;
+          setLoadingMessage('Loading from local preview data...');
+          await new Promise(resolve => setTimeout(resolve, 500));
+          setSourcePanels(mockPanelData);
+          setPanelsCache({ pl: mockPanelData, en: mockTranslatedPanelData });
+          setLoadedChaptersCount(STORY_CHAPTERS.length);
+        } else {
+          setLoadingMessage(t('generatingChapter', { current: 1, total: STORY_CHAPTERS.length }));
+          const firstChapterPanels = await loadSingleChapter(STORY_CHAPTERS[0], 1, t);
+          setSourcePanels(firstChapterPanels);
+          setPanelsCache({ pl: firstChapterPanels, en: [] });
+          setLoadedChaptersCount(1);
         }
-
-        setLoadingMessage(t('generatingChapter', { current: 1, total: STORY_CHAPTERS.length }));
-        const firstChapterPanels = await loadSingleChapter(STORY_CHAPTERS[0], 1, t);
-        setSourcePanels(firstChapterPanels);
-        setPanelsCache({ pl: firstChapterPanels, en: [] });
-        setLoadedChaptersCount(1);
       } catch (error: any) {
-        console.error("Failed to generate first chapter:", error);
+        console.error("Failed to pre-load first chapter:", error);
         const errorMessage = error?.message === 'DAILY_QUOTA_EXCEEDED' ? t('dailyQuotaError') : t('criticalError');
         setLoadingMessage(errorMessage || "An unknown error occurred during story initialization.");
       } finally {
         isFetchingInitialChapter.current = false;
-        if (hasStartedStory) {
-          setIsLoading(false);
-        }
+        console.log("Pre-loading finished.");
       }
     };
 
+    preLoadFirstChapter();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Empty dependency array ensures this runs only once on mount.
+
+  // Effect to manage the visibility of the loading screen after the user starts the story.
+  useEffect(() => {
     if (hasStartedStory) {
+      // If the story has started but panels haven't loaded yet, show the loading screen.
       if (sourcePanels.length === 0) {
         setIsLoading(true);
-        loadFirstChapter();
       } else {
+        // If the panels are ready, hide the loading screen.
         setIsLoading(false);
       }
-    } else {
-      // Pre-load silently on mount
-      loadFirstChapter();
     }
-    
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hasStartedStory]);
+  }, [hasStartedStory, sourcePanels]);
 
 
   // Effect to load subsequent chapters in the background

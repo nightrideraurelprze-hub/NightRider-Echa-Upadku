@@ -32,34 +32,19 @@
 // Klucz to: `chapter-NUMER_ROZDZIAŁU_panel-NUMER_PANELU_W_KOLEJNOŚCI`
 // Np. pierwszy panel w rozdziale 1 to 'chapter-1_panel-1'
 const narrationDatabase: Record<string, string> = {
-  // --- Rozdział 1 (2 panele) ---
-  'chapter-1_panel-1': 'REPLACE_WITH_YOUR_AUDIO_URL',
-  'chapter-1_panel-2': 'REPLACE_WITH_YOUR_AUDIO_URL',
+  // --- Demo Version Narration ---
+  'chapter-1_panel-1': 'https://storage.googleapis.com/gemini-prod-us-central1-820540103345/030a2413-41e8-4a4b-9442-3714c3e3c9e9',
+  'chapter-2_panel-2': 'https://storage.googleapis.com/gemini-prod-us-central1-820540103345/4d943204-712e-4b69-87c2-805174092497',
+  'chapter-3_panel-3': 'https://storage.googleapis.com/gemini-prod-us-central1-820540103345/d7c3575c-15a0-4712-9861-1d4a04c1f9d5',
   
-  // --- Rozdział 2 (3 panele) ---
-  'chapter-2_panel-3': 'REPLACE_WITH_YOUR_AUDIO_URL',
+  // Pozostałe klucze mogą zostać dodane w przyszłości dla pełnej wersji
+  'chapter-1_panel-2': 'REPLACE_WITH_YOUR_AUDIO_URL',
   'chapter-2_panel-4': 'REPLACE_WITH_YOUR_AUDIO_URL',
   'chapter-2_panel-5': 'REPLACE_WITH_YOUR_AUDIO_URL',
-  
-  // --- Rozdział 3 (4 panele) ---
   'chapter-3_panel-6': 'REPLACE_WITH_YOUR_AUDIO_URL',
   'chapter-3_panel-7': 'REPLACE_WITH_YOUR_AUDIO_URL',
   'chapter-3_panel-8': 'REPLACE_WITH_YOUR_AUDIO_URL',
   'chapter-3_panel-9': 'REPLACE_WITH_YOUR_AUDIO_URL',
-  
-  // --- Rozdział 4 (4 panele) ---
-  'chapter-4_panel-10': 'REPLACE_WITH_YOUR_AUDIO_URL',
-  'chapter-4_panel-11': 'REPLACE_WITH_YOUR_AUDIO_URL',
-  'chapter-4_panel-12': 'REPLACE_WITH_YOUR_AUDIO_URL',
-  'chapter-4_panel-13': 'REPLACE_WITH_YOUR_AUDIO_URL',
-
-  // --- Rozdział 5 (4 panele) ---
-  'chapter-5_panel-14': 'REPLACE_WITH_YOUR_AUDIO_URL',
-  'chapter-5_panel-15': 'REPLACE_WITH_YOUR_AUDIO_URL',
-  'chapter-5_panel-16': 'REPLACE_WITH_YOUR_AUDIO_URL',
-  'chapter-5_panel-17': 'REPLACE_WITH_YOUR_AUDIO_URL',
-  
-  // Dodaj więcej kluczy dla kolejnych rozdziałów w miarę ich implementacji...
 };
 
 

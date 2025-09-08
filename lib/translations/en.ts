@@ -28,5 +28,14 @@ export const en = {
   refreshButton: 'Refresh Page',
   introTitle: 'NightRider: Echoes of the Fall',
   introDescription: 'An immersive, AI-powered visual and audio experience. Step into a post-apocalyptic world and uncover the echoes of the past.',
+  introDescriptionDemo: 'This is a demo version featuring abridged content from the first three chapters, with full narration.',
   startButton: 'START STORY',
+  termsLink: 'Terms of Service',
+  termsTitle: 'Full Version Subscription Terms',
+  termsContent: `1. Demo Version: You are currently using the free, abridged demo version of 'NightRider: Echoes of the Fall'.
+2. Full Version: The complete, multi-chapter version of the story will be available in the future as a paid subscription.
+3. Subscription Purchase: Details regarding pricing, payment methods, and the release date will be announced on this page at a later time. The purchase will be a one-time payment granting lifetime access to the full story.
+4. Conditions: Purchasing the subscription is equivalent to accepting these terms and any future, updated terms of service.
+5. Changes: We reserve the right to change the terms of the subscription. Any changes will be announced with appropriate notice.`,
+  closeButton: 'Close',
 };

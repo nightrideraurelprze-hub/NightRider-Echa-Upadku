@@ -28,5 +28,14 @@ export const pl = {
   refreshButton: 'Odśwież stronę',
   introTitle: 'NightRider: Echa Upadku',
   introDescription: 'Wciągające, napędzane przez AI doświadczenie wizualne i dźwiękowe. Wejdź do postapokaliptycznego świata i odkryj echa przeszłości.',
+  introDescriptionDemo: 'To jest wersja demonstracyjna, zawierająca skróconą treść z pierwszych trzech rozdziałów, z pełną narracją.',
   startButton: 'ROZPOCZNIJ HISTORIĘ',
+  termsLink: 'Regulamin',
+  termsTitle: 'Regulamin Subskrypcji Pełnej Wersji',
+  termsContent: `1. Wersja Demonstracyjna: Obecnie korzystasz z darmowej, skróconej wersji demonstracyjnej 'NightRider: Echa Upadku'.
+2. Pełna Wersja: Pełna, wielorozdziałowa wersja historii będzie dostępna w przyszłości jako płatna subskrypcja.
+3. Zakup Subskrypcji: Szczegóły dotyczące ceny, metod płatności oraz daty premiery zostaną ogłoszone na tej stronie w późniejszym terminie. Zakup będzie jednorazowy i zapewni dożywotni dostęp do pełnej historii.
+4. Warunki: Zakup subskrypcji jest równoznaczny z akceptacją niniejszego regulaminu oraz przyszłych, zaktualizowanych warunków usługi.
+5. Zmiany: Zastrzegamy sobie prawo do zmiany warunków subskrypcji. Wszelkie zmiany zostaną ogłoszone z odpowiednim wyprzedzeniem.`,
+  closeButton: 'Zamknij',
 };

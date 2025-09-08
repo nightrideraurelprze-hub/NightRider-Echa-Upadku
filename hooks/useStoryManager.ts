@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { generateStoryPanels, generateAtmosphericText, translatePanels, generateImage } from '../services/geminiService';
 import * as ttsService from '../services/ttsService';
 import { STORY_CHAPTERS } from '../lib/storyContent';
@@ -83,6 +83,8 @@ async function loadSingleChapter(chapterText: string, chapterNumber: number, t: 
 export const useStoryManager = () => {
   const savedProgress = cacheService.getProgressFromCache(PROGRESS_CACHE_KEY);
   const { t, language, languageName } = useLanguage();
+  
+  const isFetchingInitialChapter = useRef(false);
 
   const [sourcePanels, setSourcePanels] = useState<PanelData[]>(savedProgress?.sourcePanels || []);
   const [displayedPanels, setDisplayedPanels] = useState<PanelData[]>(() => {
@@ -119,7 +121,7 @@ export const useStoryManager = () => {
   const startStory = useCallback(() => {
     handleUserInteraction();
     setHasStartedStory(true);
-    setIsLoading(true);
+    // Loading state is managed by the main useEffect to handle pre-loading.
   }, [handleUserInteraction]);
 
   // Consolidated save effect for user progress
@@ -139,22 +141,22 @@ export const useStoryManager = () => {
     cacheService.saveProgressToCache(PROGRESS_CACHE_KEY, progress);
   }, [currentPanelIndex, isTtsEnabled, isMusicEnabled, hasStartedStory, isLoading, sourcePanels, panelsCache, loadedChaptersCount]);
 
-  // Effect to load the first chapter
+  // Effect to pre-load first chapter on mount, and manage loading screen on story start.
   useEffect(() => {
-    // If the story hasn't started or panels are already loaded, do nothing.
-    if (!hasStartedStory || sourcePanels.length > 0) {
-      return;
-    }
+    const loadFirstChapter = async () => {
+      if (isFetchingInitialChapter.current || sourcePanels.length > 0) {
+        return;
+      }
+      isFetchingInitialChapter.current = true;
+      console.log("Starting to load Chapter 1...");
 
-    const fetchFirstChapter = async () => {
-      setIsLoading(true);
       try {
         if (!USE_API) {
             setLoadingMessage('Loading from local preview data...');
             await new Promise(resolve => setTimeout(resolve, 500));
             setSourcePanels(mockPanelData);
             setPanelsCache({ pl: mockPanelData, en: mockTranslatedPanelData });
-            setLoadedChaptersCount(STORY_CHAPTERS.length); // All mock chapters are "loaded"
+            setLoadedChaptersCount(STORY_CHAPTERS.length);
             return;
         }
 
@@ -168,13 +170,28 @@ export const useStoryManager = () => {
         const errorMessage = error?.message === 'DAILY_QUOTA_EXCEEDED' ? t('dailyQuotaError') : t('criticalError');
         setLoadingMessage(errorMessage || "An unknown error occurred during story initialization.");
       } finally {
-        setIsLoading(false);
+        isFetchingInitialChapter.current = false;
+        if (hasStartedStory) {
+          setIsLoading(false);
+        }
       }
     };
 
-    fetchFirstChapter();
+    if (hasStartedStory) {
+      if (sourcePanels.length === 0) {
+        setIsLoading(true);
+        loadFirstChapter();
+      } else {
+        setIsLoading(false);
+      }
+    } else {
+      // Pre-load silently on mount
+      loadFirstChapter();
+    }
+    
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hasStartedStory]);
+
 
   // Effect to load subsequent chapters in the background
   useEffect(() => {

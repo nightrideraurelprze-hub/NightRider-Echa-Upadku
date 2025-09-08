@@ -90,3 +90,33 @@ export const cacheAudio = async (key: string, audioBlob: Blob): Promise<void> =>
         console.error(`Failed to cache audio for key ${key}:`, error);
     }
 };
+
+/**
+ * Fetches an audio file from a URL, caches it, and returns the Blob.
+ * If the audio is already in the cache, it returns the cached version.
+ * @param key The unique key for caching the audio.
+ * @param url The URL of the audio file to fetch.
+ * @returns A promise that resolves to an audio Blob, or null on failure.
+ */
+export const fetchAndCacheAudio = async (key: string, url: string): Promise<Blob | null> => {
+    try {
+        const cachedBlob = await getCachedAudioBlob(key);
+        if (cachedBlob) {
+            console.log(`[Cache] Found pre-recorded audio in cache for key: ${key}`);
+            return cachedBlob;
+        }
+
+        console.log(`[Cache] Fetching pre-recorded audio from network: ${url}`);
+        const response = await fetch(url);
+        if (!response.ok) {
+            throw new Error(`Failed to fetch audio: ${response.statusText}`);
+        }
+        const networkBlob = await response.blob();
+        await cacheAudio(key, networkBlob);
+        return networkBlob;
+
+    } catch (error) {
+        console.error(`Failed to fetch or cache audio for key ${key} from ${url}:`, error);
+        return null;
+    }
+};

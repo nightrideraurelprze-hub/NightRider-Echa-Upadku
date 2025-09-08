@@ -5,6 +5,7 @@ import { STORY_CHAPTERS } from '../lib/storyContent';
 import type { PanelData, PanelsCache, SavedProgress } from '../types';
 import { useLanguage } from './useLanguage';
 import { getImageUrlForPanel } from '../lib/imageMapping';
+import { getNarrationUrlForPanel } from '../lib/narrationMapping';
 import { mockPanelData, mockTranslatedPanelData } from '../lib/mockPanelData';
 import { getTrackForSoundscape } from '../lib/audioTracks';
 import * as cacheService from '../services/cacheService';
@@ -35,14 +36,15 @@ async function loadSingleChapter(chapterText: string, chapterNumber: number, t: 
     for (const prompt of keyImagePrompts) {
         let imageUrl = getImageUrlForPanel(chapterNumber, prompt);
         
-        // Define the base style for all generated images.
-        const imageStyleSuffix = ", post-apocalyptic, comic book art style, cinematic lighting, high detail";
-
         if (!imageUrl) {
             try {
-                // When a custom URL is missing, generate a clearly marked placeholder.
-                const placeholderPrompt = `AI-GENERATED PLACEHOLDER because a custom image was missing for the scene: "${prompt}". Please generate the described scene`;
-                imageUrl = await generateImage(placeholderPrompt + imageStyleSuffix);
+                // A custom URL is missing. Log this and generate a visually distinct placeholder.
+                console.log(`[Story Manager] Custom image not found for prompt: "${prompt}". Generating AI placeholder.`);
+                
+                const placeholderPrompt = `A visually distinct placeholder image for a comic book. The image must have the text 'AI-GENERATED PLACEHOLDER' clearly overlaid in a bold, readable font. The background scene should be a simple, monochromatic sketch based on this description: "${prompt}"`;
+                
+                // Do not add the standard image style suffix, as we want a unique placeholder style.
+                imageUrl = await generateImage(placeholderPrompt);
             } catch (imageError) {
                 console.error(`Failed to generate placeholder image for prompt: "${prompt}". Falling back to static placeholder.`, imageError);
                 const getPlaceholderImageUrl = (text: string) => {
@@ -226,14 +228,27 @@ export const useStoryManager = () => {
     const loadNarration = async () => {
       setIsNarrationLoading(true);
       try {
-        const cachedBlob = await cacheService.getCachedAudioBlob(narrationCacheKey);
-        let audioBlob = cachedBlob;
+        // 1. Check for a pre-recorded, user-provided audio file first.
+        const narrationUrl = getNarrationUrlForPanel(currentPanel.chapter, currentPanelIndex);
+        
+        let audioBlob: Blob | null = null;
 
-        if (!audioBlob && USE_API) {
-          audioBlob = await ttsService.generateSpeech(textToSpeak, currentPanel.speakerGender);
-          await cacheService.cacheAudio(narrationCacheKey, audioBlob);
+        if (narrationUrl) {
+          console.log(`[Narration] Found pre-recorded audio URL for panel ${currentPanelIndex}. Fetching...`);
+          audioBlob = await cacheService.fetchAndCacheAudio(narrationCacheKey, narrationUrl);
+        } else {
+          // 2. Fallback to API generation if no pre-recorded file is available.
+          console.log(`[Narration] No pre-recorded audio found for panel ${currentPanelIndex}. Checking cache for generated audio.`);
+          const cachedBlob = await cacheService.getCachedAudioBlob(narrationCacheKey);
+          audioBlob = cachedBlob;
+
+          if (!audioBlob && USE_API) {
+            console.log(`[Narration] No cached audio found. Generating via API...`);
+            audioBlob = await ttsService.generateSpeech(textToSpeak, currentPanel.speakerGender);
+            await cacheService.cacheAudio(narrationCacheKey, audioBlob);
+          }
         }
-
+        
         if (isMounted && audioBlob && audioBlob.size > 0) {
            setNarrationAudioBlob(audioBlob);
         } else {

@@ -1,19 +1,22 @@
-import { ElevenLabsClient } from '@elevenlabs/elevenlabs-js';
+// FIX: The ElevenLabs SDK was updated. The main client class is now named 'ElevenLabs' instead of 'ElevenLabsClient'. Updated the import and all usages of the class name.
+import { ElevenLabs } from '@elevenlabs/elevenlabs-js';
 import { PanelData } from '../types';
 
-const MALE_VOICE_ID = 'pNInz6obpgU5sV9ADbT4'; // Adam (Multi-language)
-const FEMALE_VOICE_ID = '21m00Tcm4TlvDq8ikWAM'; // Rachel (Multi-language)
-const MACHINE_VOICE_ID = 'JBFqnCBsd6RMkjVDRZzb'; // Optional: A more robotic voice
+// Assigning unique, distinct voices for better immersion.
+const NARRATOR_VOICE_ID = 'pNInz6obpgU5sV9ADbT4'; // Adam: Deep, professional, perfect for narration.
+const MALE_VOICE_ID = 'yoZ06aMzmToKcTNBGrbW';     // Sam: A more rugged, deep voice for characters like John.
+const FEMALE_VOICE_ID = '21m00Tcm4TlvDq8ikWAM';   // Rachel: A clear, versatile female voice.
+const MACHINE_VOICE_ID = 'JBFqnCBsd6RMkjVDRZzb';  // Fin: A synthetic voice for AI/machines.
 
-let elevenlabs: ElevenLabsClient | null = null;
+let elevenlabs: ElevenLabs | null = null;
 
-function getElevenLabsClient(): ElevenLabsClient {
+function getElevenLabsClient(): ElevenLabs {
     if (!elevenlabs) {
         const apiKey = import.meta.env.VITE_ELEVENLABS_API_KEY;
         if (!apiKey) {
             throw new Error("ElevenLabs API key is not configured. Please set the VITE_ELEVENLABS_API_KEY environment variable.");
         }
-        elevenlabs = new ElevenLabsClient({ apiKey });
+        elevenlabs = new ElevenLabs({ apiKey });
     }
     return elevenlabs;
 }
@@ -25,25 +28,29 @@ function getElevenLabsClient(): ElevenLabsClient {
  * @returns A promise that resolves to an audio Blob.
  */
 export const generateSpeech = async (text: string, speakerGender: PanelData['speakerGender']): Promise<Blob> => {
-    const elevenlabsClient = getElevenLabsClient(); // Use a locally scoped client variable
+    const elevenlabsClient = getElevenLabsClient();
 
     let voiceId: string;
     switch (speakerGender) {
+        case 'narrator':
+            voiceId = NARRATOR_VOICE_ID;
+            break;
+        case 'male':
+            voiceId = MALE_VOICE_ID;
+            break;
         case 'female':
             voiceId = FEMALE_VOICE_ID;
             break;
         case 'machine':
             voiceId = MACHINE_VOICE_ID;
             break;
-        case 'male':
-        case 'narrator':
         default:
-            voiceId = MALE_VOICE_ID;
+            voiceId = NARRATOR_VOICE_ID; // Default to narrator voice.
             break;
     }
 
     try {
-        const audioStream = await elevenlabsClient.generate({ // Use the correct client variable
+        const audioStream = await elevenlabsClient.generate({
             voice: voiceId,
             text,
             model_id: 'eleven_multilingual_v2',

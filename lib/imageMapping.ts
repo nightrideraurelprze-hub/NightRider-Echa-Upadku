@@ -37,7 +37,7 @@ const imageDatabase: { [key: string]: string } = {
   "John w kabinie Dominatora": "https://drive.google.com/uc?export=download&id=1-F_jO3d1vX8Z_8k_N5zL_Q2mK_Z7jP8e", // Już ustawione jako przykład
   "Podświetlona deska rozdzielcza": "https://drive.google.com/uc?export=download&id=1-hT_R7tW_y_z_i_K8hY9J_b-J_kL6rV3", // Już ustawione jako przykład
   "John siada za kierownicą": "https://drive.google.com/uc?export=download&id=1TEfIqI1vQaSqiUH0rW24eqOn_C_cX5aS",
-  "Wspomnienia wojny": "REPLACE_WITH_YOUR_GOOGLE_DRIVE_URL",
+  "Wspomnienia wojny": "https://drive.google.com/uc?export=download&id=1ZHXp0il_UMGOpR7ZqF2F3zd3jANnhagF",
 
   // --- Rozdział 3: Spotkanie w fortecy ---
   "Dominator wjeżdża do fortecy": "REPLACE_WITH_YOUR_GOOGLE_DRIVE_URL",

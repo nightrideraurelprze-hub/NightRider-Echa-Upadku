@@ -15,22 +15,39 @@ This is an immersive, AI-powered visual and audio experience for the post-apocal
 
 ## Configuration
 
-This application uses [Vite](https://vitejs.dev/) to handle environment variables. For both local development and deployment, you need to configure the following variables.
+This application requires API keys to function in "live" mode.
 
-### Environment Variables for Deployment (e.g., Vercel)
+### Required API Keys
 
-Set these in your hosting provider's dashboard:
+-   **Google Gemini API Key**: Your Google Gemini API key. Get one from [Google AI Studio](https://aistudio.google.com/app/apikey).
+-   **ElevenLabs API Key**: Your ElevenLabs API key. Find it in your [ElevenLabs profile](https://elevenlabs.io/app/settings/api-keys).
 
--   `VITE_GEMINI_API_KEY`: Your Google Gemini API key. Get one from [Google AI Studio](https://aistudio.google.com/app/apikey).
--   `VITE_ELEVENLABS_API_KEY`: Your ElevenLabs API key. Find it in your [ElevenLabs profile](https://elevenlabs.io/app/settings/api-keys).
--   `VITE_USE_API`: (Optional) Set to `"false"` to force the deployed application into "preview" mode. Defaults to `"true"` (live mode).
+### Environment Variables
 
-### For Local Development
+How you set these variables depends on your environment.
 
-1.  Copy the `.env.example` file to a new file named `.env` in the project root.
-2.  Open the `.env` file and fill in your actual API keys.
+#### For Deployment (e.g., Vercel, Netlify)
 
-The Vite development server will automatically load these variables.
+Set these in your hosting provider's environment variable settings:
+
+-   `API_KEY`: Your **Google Gemini API key**. The application is configured to read this key directly from the `process.env.API_KEY` variable, as required by the SDK guidelines.
+-   `VITE_ELEVENLABS_API_KEY`: Your **ElevenLabs API key**. This key is prefixed with `VITE_` to be exposed to the frontend client by Vite.
+-   `VITE_USE_API`: (Optional) Set to `"false"` to force the deployed application into "preview" mode (using local mock data). Defaults to `"true"` (live mode).
+
+#### For Local Development
+
+1.  Create a file named `.env` in the project root.
+2.  Add your **ElevenLabs API key** and other Vite-specific variables to this file:
+
+    ```
+    # .env
+    VITE_ELEVENLABS_API_KEY="your_elevenlabs_api_key_here"
+    VITE_USE_API="true" 
+    ```
+
+**Important:** The **Google Gemini API key (`API_KEY`)** is expected to be available in the execution environment (`process.env`). For local development with Vite, this is not automatically handled by `.env` files. The easiest way to run locally is often to use the "preview" mode by setting `VITE_USE_API="false"`. If you need to run in live mode locally, you will need to ensure the `API_KEY` variable is present in the process running the Vite dev server.
+
+The Vite development server will automatically load the variables from your `.env` file that are prefixed with `VITE_`.
 
 ## Running the Application
 

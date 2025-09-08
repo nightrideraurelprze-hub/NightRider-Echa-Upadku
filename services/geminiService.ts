@@ -5,9 +5,11 @@ let ai: GoogleGenAI | null = null;
 
 function getAiInstance(): GoogleGenAI {
     if (!ai) {
-        const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+        // FIX: Per @google/genai coding guidelines, the API key must be obtained from process.env.API_KEY.
+        const apiKey = process.env.API_KEY;
         if (!apiKey) {
-            throw new Error("Gemini API key is not configured. Please set the VITE_GEMINI_API_KEY environment variable.");
+            // FIX: Updated error message to reflect the new environment variable.
+            throw new Error("Gemini API key is not configured. Please set the API_KEY environment variable.");
         }
         ai = new GoogleGenAI({ apiKey });
     }

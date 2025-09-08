@@ -34,11 +34,17 @@ async function loadSingleChapter(chapterText: string, chapterNumber: number, t: 
     }
     for (const prompt of keyImagePrompts) {
         let imageUrl = getImageUrlForPanel(chapterNumber, prompt);
+        
+        // Define the base style for all generated images.
+        const imageStyleSuffix = ", post-apocalyptic, comic book art style, cinematic lighting, high detail";
+
         if (!imageUrl) {
             try {
-                imageUrl = await generateImage(prompt);
+                // When a custom URL is missing, generate a clearly marked placeholder.
+                const placeholderPrompt = `AI-GENERATED PLACEHOLDER because a custom image was missing for the scene: "${prompt}". Please generate the described scene`;
+                imageUrl = await generateImage(placeholderPrompt + imageStyleSuffix);
             } catch (imageError) {
-                console.error(`Failed to generate image for prompt: "${prompt}". Falling back to placeholder.`, imageError);
+                console.error(`Failed to generate placeholder image for prompt: "${prompt}". Falling back to static placeholder.`, imageError);
                 const getPlaceholderImageUrl = (text: string) => {
                     const encodedText = encodeURIComponent(`Image Generation Failed\n${text}`);
                     return `https://placehold.co/1920x1080/000000/FFBF00/png?text=${encodedText}`;

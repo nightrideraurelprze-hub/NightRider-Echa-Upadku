@@ -6,7 +6,8 @@ const audioTracks: { [key: string]: string } = {
   engine: "https://storage.googleapis.com/gemini-prod-us-central1-820540103345/5a7a1b3e-7a2e-4b8a-8a4c-9a2c3d1b8c7c", // Truck Engine
   quiet: "https://storage.googleapis.com/gemini-prod-us-central1-820540103345/0c1d2e3f-6a7b-4c8d-9e1f-2a3b4c5d6e7f", // Soft ambience
   fortress: "https://storage.googleapis.com/gemini-prod-us-central1-820540103345/7f6a5b4c-3d2e-1a0b-9c8d-7e6f5a4b3c2d", // Fortress ambience
-  rain: "https://storage.googleapis.com/gemini-prod-us-central1-820540103345/a1b2c3d4-e5f6-a7b8-c9d0-e1f2a3b4c5d6" // Rain and thunder
+  rain: "https://storage.googleapis.com/gemini-prod-us-central1-820540103345/a1b2c3d4-e5f6-a7b8-c9d0-e1f2a3b4c5d6", // Rain and thunder
+  dawn: "https://storage.googleapis.com/gemini-prod-us-central1-820540103345/0c1d2e3f-6a7b-4c8d-9e1f-2a3b4c5d6e7f" // Dawn/Sunrise ambience
 };
 
 const keywordMapping: { [key: string]: string[] } = {
@@ -16,7 +17,8 @@ const keywordMapping: { [key: string]: string[] } = {
   engine: ['silnik', 'pomruk', 'ciężarówka', 'dominator', 'wóz', 'engine', 'rumble', 'truck', 'vehicle'],
   fortress: ['forteca', 'brama', 'mury', 'miasto', 'eden', 'bastion', 'fortress', 'gate', 'walls', 'city'],
   rain: ['deszcz', 'burza', 'wiatr', 'rain', 'storm', 'wind', 'chłód', 'zimno', 'cold'],
-  quiet: ['spokój', 'nadzieja', 'rozmowa', 'słońce', 'peace', 'hope', 'conversation', 'sun', 'świt', 'dawn', 'noc', 'night']
+  dawn: ['dawn', 'sunrise', 'świt'],
+  quiet: ['spokój', 'nadzieja', 'rozmowa', 'słońce', 'peace', 'hope', 'conversation', 'sun', 'noc', 'night']
 };
 
 export const getTrackForSoundscape = (soundscape: string): string | null => {

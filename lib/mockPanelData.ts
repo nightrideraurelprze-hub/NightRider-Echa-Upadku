@@ -10,7 +10,7 @@ export const mockPanelData: PanelData[] = [
   {
     text: "Słońce powoli wyłaniało się zza chmury pyłu, rozświetlając krajobraz w odcieniach rdzawej czerwieni i brudnej żółci. Ziemia była spękana, a na horyzoncie widać było ruiny dawnych miast.",
     imageUrl: getPlaceholderImageUrl(1, "Post-apokaliptyczny wschód słońca"),
-    soundscape: "Cichy, świszczący wiatr przesuwa pył po spękanej ziemi.",
+    soundscape: "dawn",
     chapter: 1,
     speakerGender: 'narrator'
   },
@@ -137,7 +137,7 @@ export const mockTranslatedPanelData: PanelData[] = [
   {
     text: "The sun was slowly emerging from behind a cloud of dust, illuminating the landscape in shades of rusty red and dirty yellow. The earth was cracked, and on the horizon, the ruins of former cities were visible.",
     imageUrl: getPlaceholderImageUrl(1, "Post-apocalyptic sunrise"),
-    soundscape: "A quiet, whistling wind sweeps dust across the cracked earth.",
+    soundscape: "dawn",
     chapter: 1,
     speakerGender: 'narrator'
   },

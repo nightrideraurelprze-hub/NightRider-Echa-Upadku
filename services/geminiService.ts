@@ -163,16 +163,16 @@ export const translatePanels = (panels: PanelData[], targetLanguage: string): Pr
 
 /**
  * Generates an image based on a text prompt using the Imagen model.
- * @param prompt The text prompt for the image.
+ * @param prompt The full, final text prompt for the image.
  * @returns A promise that resolves to a base64 encoded data URI string.
  */
 export const generateImage = (prompt: string): Promise<string> => withRetry(async () => {
-    console.log(`Generating image for prompt: "${prompt}"`);
-    const fullPrompt = `${prompt}, post-apocalyptic, comic book art style, cinematic lighting, high detail`;
+    // The prompt is now constructed by the caller, making this function more generic.
+    console.log(`Generating image with final prompt: "${prompt}"`);
     
     const response = await getAiInstance().models.generateImages({
         model: 'imagen-4.0-generate-001',
-        prompt: fullPrompt,
+        prompt: prompt, // Use the prompt directly
         config: {
           numberOfImages: 1,
           outputMimeType: 'image/png',

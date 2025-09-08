@@ -30,13 +30,13 @@
 const imageDatabase: { [key: string]: string } = {
   // --- Rozdział 1: Świat po wojnie ---
   "Post-apokaliptyczny wschód słońca": "https://drive.google.com/uc?export=download&id=1_R82R-5YrmuQ1gY8Z3f3Yq2z_X7yF4jW", // Już ustawione jako przykład
-  "Ruiny dawnych miast": "REPLACE_WITH_YOUR_GOOGLE_DRIVE_URL",
+  "Ruiny dawnych miast": "https://drive.google.com/uc?export=download&id=1Uf7VuIVh8RC_3YcfVPjbI-KYdWHxwVRt",
   "NightRider i jego ciężarówka Dominator": "https://drive.google.com/uc?export=download&id=1-1yq_b7hQZJ3n5t4X_c_G7jL_X9zR6yK", // Już ustawione jako przykład
 
   // --- Rozdział 2: John i Dominator ---
   "John w kabinie Dominatora": "https://drive.google.com/uc?export=download&id=1-F_jO3d1vX8Z_8k_N5zL_Q2mK_Z7jP8e", // Już ustawione jako przykład
   "Podświetlona deska rozdzielcza": "https://drive.google.com/uc?export=download&id=1-hT_R7tW_y_z_i_K8hY9J_b-J_kL6rV3", // Już ustawione jako przykład
-  "John siada za kierownicą": "REPLACE_WITH_YOUR_GOOGLE_DRIVE_URL",
+  "John siada za kierownicą": "https://drive.google.com/uc?export=download&id=1TEfIqI1vQaSqiUH0rW24eqOn_C_cX5aS",
   "Wspomnienia wojny": "REPLACE_WITH_YOUR_GOOGLE_DRIVE_URL",
 
   // --- Rozdział 3: Spotkanie w fortecy ---
